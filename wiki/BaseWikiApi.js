@@ -3,7 +3,6 @@ import { wrapper } from 'axios-cookiejar-support';
 import { CookieJar } from 'tough-cookie';
 import { objectToQueryString } from '../utilities';
 import { baseLogin, getToken as getWikiToken } from './wikiLogin';
-import { WikiApiConfig } from '../types';
 
 export const defaultConfig = {
   baseUrl: 'https://he.wikipedia.org/w/api.php',
@@ -72,8 +71,8 @@ export default function BaseWikiApi(apiConfig = defaultConfig) {
 
   async function* continueQuery(
     path,
-    resultConverterCallback?: (result) => any,
-    baseContinue?,
+    resultConverterCallback,
+    baseContinue,
   ) {
     let result = await request(path + (baseContinue ? `&${objectToQueryString(baseContinue)}` : ''));
     while (result.continue) {
