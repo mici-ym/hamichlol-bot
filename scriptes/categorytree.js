@@ -69,7 +69,7 @@ class CategoryTree extends requests {
    * @param {string} [options.categoryName] - The name of the category.
    * @param {string} [options.categoryId] - The ID of the category.
    * @throws {Error} - If neither categoryName nor categoryId is provided.
-   * @returns {string} - A string indicating the completion of the operation.
+   * @returns {Promise<string>} - A string indicating the completion of the operation.
    */
   async createList({ categoryName, categoryId }) {
     if (!categoryName && !categoryId) {
@@ -85,7 +85,7 @@ class CategoryTree extends requests {
       : await this.categoryMembers({ categoryId, options });
 
     for (const page of data) {
-      if (page.ns === 14 && !this.categoryIds.includes(page.pageid)) {
+      if (page.ns === 14 && !this.categoryIds.has(page.pageid)) {
         this.categoryIds.push(page.pageid);
         this.categorys.push(page.title);
       } else if (page.ns === 0) {
@@ -121,9 +121,11 @@ class CategoryTree extends requests {
    * @param {string} filename - The name of the file to save the array to.
    */
   async saveToFile(arr, filename) {
-    fs.writeFileSync(filename, arr.join("\n"), (err, data) => {
-      return data || err;
-    });
+    try {
+      fs.writeFileSync(filename, arr.join("\n"));
+    } catch (err) {
+      console.error(err);
+    }
   }
 }
 export default CategoryTree;

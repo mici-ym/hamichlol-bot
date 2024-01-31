@@ -3,7 +3,7 @@ import { wordesOfBots } from "./liste's.js";
 export function botText(text) {
   const regex1 = /==.*==/g;
   const regex2 = "\n\n";
-  const regex3 = /\[\[קטגוריה:[^\]]*?\]\]/g;
+  const regex3 = /\[\[קטגוריה:[^\]]\]\]/g;
   const regex4 = /{{מיון רגיל:.+}}/;
   let textList;
   let categoriesToAdd;
@@ -32,10 +32,11 @@ export function botText(text) {
 /**
  *
  * @param {string} text
+ * @returns {string}
  */
 function removePhotos(text) {
   const regex1 = /(?<!סמל ?= ?)\[\[קובץ:.+\]\]\n?/g;
-  const regex2 = /\|\s?תמונה.*\n/g;
+  const regex2 = /\|\s?תמונה[^|}]*\n/g;
   let textWithoutImages = text.replace(regex1, "").replace(regex2, "");
   return textWithoutImages;
 }

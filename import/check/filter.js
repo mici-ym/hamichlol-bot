@@ -7,17 +7,17 @@ import { wordesOfFilter } from "./liste's.js";
  * @return {Array<string>|boolean} - The name of the list if a word is found, or false if no word is found.
  */
 function checkWord(text) {
-  const foundWords = [];
+  const foundWords = {};
 
   for (let listName in wordesOfFilter) {
     wordesOfFilter[listName].forEach((word) => {
       if (text.includes(word)) {
-        foundWords.push(wordesOfFilter[listName], word);
+        foundWords[listName] = word;
       }
     });
   }
 
-  return foundWords.length === 0 ? false : foundWords;
+  return foundWords ? foundWords : false;
 }
 
 export default checkWord;
