@@ -1,5 +1,5 @@
 import fetch from "node-fetch";
-import { extractCookie } from "./utils/cookie.js";
+import { extractCookie } from "../requests/utils/cookie.js";
 import Word_list from "./Word_list.js";
 /**
  * @param {string} userName

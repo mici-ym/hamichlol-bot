@@ -1,5 +1,5 @@
-import requests from "./requests.js";
-import checkWord from "./filter.js";
+import requests from "..requests/requests.js";
+import checkWord from "./check/filter.js";
 import * as botPages from "./bot_pages.js";
 
 /**

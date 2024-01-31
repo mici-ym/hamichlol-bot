@@ -1,4 +1,4 @@
-import { wordesOfBots } from "./liste's.js";
+import { wordesOfBots } from "./check/liste's.js";
 
 export function botText(text) {
   const regex1 = /==.*==/g;

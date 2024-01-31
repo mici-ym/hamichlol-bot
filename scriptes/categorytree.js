@@ -1,4 +1,4 @@
-import requests from "./requests.js";
+import requests from "../requests/requests.js";
 import fs from "fs";
 
 class CategoryTree extends requests {
