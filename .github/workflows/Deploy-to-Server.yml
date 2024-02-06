@@ -14,12 +14,12 @@ jobs:
 
       - name: Set up SSH
         run: |
-         if [ -z "${{ secrets.MY_SECRET }}" ]; then
+         if [ -z ${{ secrets.MY_SECRET }} ]; then
             echo "הנתון הסודי אינו קיים. יוצא מזרימת העבודה."
             exit 1
           else
             mkdir -p ~/.ssh/
-            echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+            echo ${{ secrets.SSH_PRIVATE_KEY }} > ~/.ssh/id_rsa
             chmod 600 ~/.ssh/id_rsa
             ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
 
