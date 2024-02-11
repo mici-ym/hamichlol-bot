@@ -8,7 +8,7 @@ const client = new Client("https://www.hamichlol.org.il/w/api.php");
  * @param {string} urlGet - The URL of the wiki.
  * @throws {Error} Throws an error if the URL of the wiki is not provided.
  */
-class requests extends Client {
+export class requests extends Client {
   wikiUrl = "";
   constructor(wikiUrl) {
     if (!wikiUrl) {
@@ -209,8 +209,18 @@ class requests extends Client {
   }
 }
 
+/** 
+ * @type {{[key: string]: Requests}} 
+ */
 let instance = {};
 
+/**
+ * Get or create an instance of Requests.
+ *
+ * @param {string} wikiUrl - The URL to use for the requests.
+ * @param {string} [nameInstance="hamichlol"] - The name of the instance.
+ * @returns {requests} An instance of the `Requests` class.
+ */
 export function getRequestsInstance(wikiUrl, nameInstance = "hamichlol") {
   if (!instance[nameInstance]) {
     instance[nameInstance] = new requests(wikiUrl);
