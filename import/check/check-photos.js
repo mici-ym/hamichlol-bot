@@ -2,7 +2,7 @@ import ClientPhotos from "../../requests/Client_photos.js";
 
 const clientPhotos = new ClientPhotos();
 
-/*
+/**
 /* @param {Array} arrPhoto - An array of photos to check.
 /* @param {string} wikitext - The wikitext of the page.
 */

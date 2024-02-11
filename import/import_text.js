@@ -1,4 +1,5 @@
-import getRequestsInstance from "..requests/requests.js";
+//import getRequestsInstance  from "..requests/requests.js";
+import { requests } from "../requests/requests.js";
 import checkWord from "./check/filter.js";
 import * as botPages from "./bot_pages.js";
 
@@ -7,22 +8,26 @@ import * as botPages from "./bot_pages.js";
  * @param {string} title - The title of the Wikipedia page to import text from.
  * @returns {Promise<{text: string, summary: string}>} - A promise that resolves to an object containing the modified text and the update summary.
  */
-export async function importText(title,checkBot) {
+export async function importText(title, checkBot) {
   try {
-    const request = getRequestsInstance("https://he.wikipedia.org/w/api.php", "wiki");
-    const data = await request.parse({ page: title });
+    const request = new requests("https://he.wikipedia.org/w/api.php");
+    //const request = getRequestsInstance("https://he.wikipedia.org/w/api.php", "wiki");
+    const data = await request.parse({
+      page: title,
+      prop: "templates|images|wikitext",
+    });
 
-    const sinun = checkWord(data.parse.text["*"]);
+    const sinun = checkWord(data.parse.wikitext["*"]);
     if (sinun) {
       //console.error(title + "- sinun");
       //console.error(sinun);
       return sinun;
     }
-    
+
     const parit = getProperties(data);
     const girsa = data.parse.revid;
     const SortingWikipedia = `{{מיון ויקיפדיה|דף=${title}|גרסה=${girsa}|פריט=${parit}}}`;
-    
+
     let text = `${data.parse.text["*"]}\n{{וח|${title}}}\n${SortingWikipedia}`;
     let summary = `עדכון מוויקיפדיה גרסה ${girsa}`;
     if (checkBot) {
