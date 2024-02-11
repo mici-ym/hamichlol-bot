@@ -3,31 +3,27 @@ name: Deploy to Server
 on:
   push:
     branches:
-      - main # Or any other branch you want to trigger the action on
+    - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-      - name: Set up SSH
-        run: |
-          if [ -z "${{ secrets.MY_SECRET }}" ]; then
-            echo "הנתון הסודי אינו קיים. יוצא מזרימת העבודה."
-            exit 1
-          else
-            mkdir -p ~/.ssh/
-            echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-            chmod 600 ~/.ssh/id_rsa
-            ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
-          fi
+    - name: Set up SSH
+      run: |
+        mkdir -p ~/.ssh/
+        echo "$SERVER_SSH_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H $SERVER_HOST >> ~/.ssh/known_hosts
+      env:
+        SERVER_SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        SERVER_HOST: ${{ secrets.SERVER_IP }}
 
-      - name: Deploy to Server
-        env:
-          DEPLOY_DIR: '~/{{ github.repository }}'
-          SERVER: ${{ secrets.SERVER_IP }}
-          USER: ${{ secrets.SERVER_USER }}
-        run: |
-          rsync -avz --delete --exclude='.github/' ./ $USER@$SERVER:$DEPLOY_DIR
+    - name: Deploy to Server
+      run: |
+        ssh -i ~/.ssh/id_rsa $SERVER_USER@$SERVER_HOST 'cd projects && git pull origin main'
+      env:
+        SERVER_USER: bitnami

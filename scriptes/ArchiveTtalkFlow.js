@@ -1,6 +1,6 @@
-import requests from "../requests/requests.js";
+import getRequestsInstance from "../requests/requests.js";
 import fs from "fs";
-const request = new requests("https://www.hamichlol.org.il/w/api.php");
+const request = getRequestsInstance("https://www.hamichlol.org.il/w/api.php");
 
 (async () => {
   const arr1 = [];

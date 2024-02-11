@@ -1,5 +1,8 @@
 /node_modules/
+/wiki
 requests.test.js
 test.js
 Word_list.js
-app1.js
+/scriptes/app1.js
+/.github/workflows/Deploy-to-Server.yml
+/import/check/check-local.js

@@ -209,4 +209,11 @@ class requests extends Client {
   }
 }
 
-export default requests;
+let instance = {};
+
+export function getRequestsInstance(wikiUrl, nameInstance = "hamichlol") {
+  if (!instance[nameInstance]) {
+    instance[nameInstance] = new requests(wikiUrl);
+  }
+  return instance[nameInstance];
+}

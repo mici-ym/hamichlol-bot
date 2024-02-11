@@ -1,4 +1,4 @@
-import requests from "..requests/requests.js";
+import getRequestsInstance from "..requests/requests.js";
 import checkWord from "./check/filter.js";
 import * as botPages from "./bot_pages.js";
 
@@ -9,7 +9,7 @@ import * as botPages from "./bot_pages.js";
  */
 export async function importText(title,checkBot) {
   try {
-    const request = new requests("https://he.wikipedia.org/w/api.php");
+    const request = getRequestsInstance("https://he.wikipedia.org/w/api.php", "wiki");
     const data = await request.parse({ page: title });
 
     const sinun = checkWord(data.parse.text["*"]);
