@@ -9,7 +9,7 @@ class ClientPhotos {
   isLogedIn = false;
   constructor() {}
 
-  async #postWiki(body) {
+  async #post(body) {
     return fetch(this.url, {
       headers: {
         "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -22,6 +22,14 @@ class ClientPhotos {
     });
   }
 
+  async #get(params) {
+    const res = await fetch(`${this.url}?${new URLSearchParams(params)}`, {
+      headers: { cookie: this.#cookie },
+      credentials: "include",
+    });
+    return res.json();
+  }
+
   async login() {
     if (!this.userName || !this.#password) {
       throw new Error("you dinwt pass your user name or your password");
@@ -32,26 +40,25 @@ class ClientPhotos {
       uname: this.userName,
       pw: this.#password,
     };
-    const res = await this.#postWiki(loginParams);
+    const res = await this.#post(loginParams);
     const result = await res.json();
-    if (result.error) {
-      throw new Error(result.error.message);
-    }
+
     if (result.success) {
-      this.#cookie = extractCookie(res.headers.raw()["set-cookie"]);
+      this.#cookie = extractCookie(res.headers.raw()["set-cookie"][1]);
       this.isLogedIn = true;
-      return true;
+    } else {
+      throw new Error("Couldn't login: " + JSON.stringify(result));
     }
+    return this;
   }
 
-  async search(file) {
+  async getImageStatus(file) {
     if (!this.isLogedIn) {
       await this.login();
     }
-    const res = await fetch(`${this.url}/api?action=search&image=${file}`, {
-      headers: { cookie: this.#cookie },
-    });
-    return res.json();
+
+    const { image, error } = await this.#get({ action: "search", image: file });
+    return image?.netfree || error?.message;
   }
 }
 export default ClientPhotos;
