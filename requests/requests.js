@@ -94,8 +94,13 @@ export class requests extends Client {
     if (categoryName) {
       queryParams.cmtitle = `קטגוריה:${categoryName}`;
     }
+    if (options.cmnamespace) {
+      queryParams.cmnamespace = options.cmnamespace;
+    }
     if (options.cmtype) {
       delete queryParams.cmnamespace;
+    } else {
+      delete options.cmtype
     }
 
     Object.assign(queryParams, options);

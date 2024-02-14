@@ -1,4 +1,4 @@
-import requests from "../requests/requests.js";
+import { requests } from "../requests/requests.js";
 import fs from "fs";
 
 class CategoryTree extends requests {
@@ -18,7 +18,7 @@ class CategoryTree extends requests {
    * @param {boolean} [options.pages=false] - Indicates whether to fetch pages or not.
    * @param {boolean} [options.withCookie=true] - Indicates whether to use cookies.
    * @param {string} [options.saveToFile=false] - Indicates whether to save to a file or not.
-   * @returns {Array} - An array containing the list of pages and categories.
+   * @returns {Promise<Array>} - An array containing the list of pages and categories.
    */
   async createCategoryTree({
     categoryId,
@@ -27,40 +27,38 @@ class CategoryTree extends requests {
     withCookie = true,
     saveToFile: File = false,
   }) {
-    const list = [];
-    const categorys = [];
-    const categoryIds = [];
-
+    if (pages) this.pages = true;
     if (categoryId) {
       await this.createList({ categoryId, withCookie });
     } else if (categoryName) {
       await this.createList({ categoryName, withCookie });
     }
 
-    for (let i = 0; i < categoryIds.length; i++) {
-      const categoryId = categoryIds[i];
+    for (let i = 0; i < this.categoryIds.length; i++) {
+      const categoryId = this.categoryIds[i];
       const delay = this.getDelay(i);
       await this.delayPromise(delay);
       await this.createList({ categoryId });
       console.log(
-        `${i + 1}/${categoryIds.length}, ${
-          ((i + 1) / categoryIds.length) * 100
+        `${i + 1}/${this.categoryIds.length}, ${
+          ((i + 1) / this.categoryIds.length) * 100
         }%`
       );
     }
 
     if (File) {
       if (pages) {
-        await this.saveToFile(list, `${categoryName}_pages.txt`).catch(
+        await this.saveToFile(this.list, `${categoryName}_pages.txt`).catch(
           console.error
         );
       }
-      await this.saveToFile(categorys, `${categoryName}_categorys.txt`).catch(
-        console.error
-      );
+      await this.saveToFile(
+        this.categorys,
+        `${categoryName}_categorys.txt`
+      ).catch(console.error);
     }
 
-    return [list, categorys];
+    return [this.list, this.categorys];
   }
 
   /**
@@ -71,21 +69,22 @@ class CategoryTree extends requests {
    * @throws {Error} - If neither categoryName nor categoryId is provided.
    * @returns {Promise<string>} - A string indicating the completion of the operation.
    */
-  async createList({ categoryName, categoryId }) {
+  async createList({ categoryName, categoryId, withCookie = true }) {
     if (!categoryName && !categoryId) {
       throw new Error("You must provide either categoryId or categoryName");
     }
 
     const options = {
       cmtype: this.pages ? undefined : "subcat",
+      cmnamespace: "0|14"
     };
 
     const data = categoryName
-      ? await this.categoryMembers({ categoryName, options })
-      : await this.categoryMembers({ categoryId, options });
+      ? await this.categoryMembers({ categoryName, withCookie, options })
+      : await this.categoryMembers({ categoryId, withCookie, options });
 
     for (const page of data) {
-      if (page.ns === 14 && !this.categoryIds.has(page.pageid)) {
+      if (page.ns === 14 && !this.categoryIds.includes(page.pageid)) {
         this.categoryIds.push(page.pageid);
         this.categorys.push(page.title);
       } else if (page.ns === 0) {
