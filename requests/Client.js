@@ -15,7 +15,7 @@ class Client {
   userName = process.env.MC_USER || "";
   #password = process.env.MC_PASSWORD || "";
   token = "";
-  isLogedIn = false;
+
   /**
    *
    * @param {String} wikiUrl
@@ -25,6 +25,7 @@ class Client {
       throw new Error("you didn't pass the url of your wiki");
     }
     this.wikiUrl = wikiUrl;
+    this.isLogedIn = false;
   }
   async #postWiki(body) {
     return fetch(this.wikiUrl, {
@@ -162,7 +163,7 @@ class Client {
       sectiontitle,
       token: this.token.csrftoken,
     };
-    if(!nocreate) delete editParams.nocreate;
+    if (!nocreate) delete editParams.nocreate;
     if (!baserevid) {
       delete editParams.baserevid;
     }
@@ -179,7 +180,7 @@ class Client {
     }
     const res = await this.#postWiki(editParams);
     const { edit, error } = await res.json();
-    return edit?.result || error;
+    return edit || error;
   }
   /**
    * method to delete article
@@ -215,8 +216,9 @@ class Client {
     from,
     to,
     reason,
-    { movetalk = 1, movesubpages = 1, noredirect = 1 }
+    { movetalk = 1, movesubpages = 1, noredirect = 0 }
   ) {
+    if (!this.isLogedIn) await this.login();
     const moveParams = {
       action: "move",
       from,
@@ -229,9 +231,11 @@ class Client {
       token: this.token.csrftoken,
     };
     if (!movetalk) delete moveParams.movetalk;
+    if (!movesubpages) delete moveParams.movesubpages;
+    if (!noredirect) delete moveParams.noredirect;
     const res = await this.#postWiki(moveParams);
     const parsed = await res.json();
-    return parsed?.move?.to;
+    return parsed;
   }
   async unDelete({ title, reason }) {
     const params = {

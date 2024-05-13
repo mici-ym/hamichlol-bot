@@ -100,7 +100,7 @@ export class requests extends Client {
     if (options.cmtype) {
       delete queryParams.cmnamespace;
     } else {
-      delete options.cmtype
+      delete options.cmtype;
     }
 
     Object.assign(queryParams, options);
@@ -180,11 +180,11 @@ export class requests extends Client {
   async getWithContinue(queryString, withCookie, data) {
     let contin = data.continue;
     let results = [];
-    const pages = data.query.pages;
+    let pages = "pages" in data.query;
 
     results = !pages
       ? results.concat(...Object.values(data.query))
-      : results.concat(Object.values(Object.values(data.query)[0]));
+      : results.concat(...Object.values(data.query));
     try {
       while (contin) {
         const res = await client.get(
@@ -193,7 +193,7 @@ export class requests extends Client {
         );
         results = !pages
           ? results.concat(...Object.values(res.query))
-          : results.concat(Object.values(Object.values(res.query)[0]));
+          : results.concat(...Object.values(data.query));
         contin = res.continue;
       }
       return results;
@@ -202,6 +202,25 @@ export class requests extends Client {
       //throw new Error(error);
     }
   }
+
+  #mergeObjectsWithCommonFields(obj1, obj2) {
+    const merged = {};
+    for (const key in obj1) {
+      if (
+        Object.hasOwnProperty.call(obj1, key) &&
+        Object.hasOwnProperty.call(obj2, key)
+      ) {
+        // מניחים שהערך של 'age' זהה ולכן נשתמש באחד מהם
+
+        merged[key] = {
+          names: [...new Set([...obj1[key].names, ...obj2[key].names])], // מאחד את הרשימות תוך כדי הסרת כפילויות
+          age: obj1[key].age,
+        };
+      }
+    }
+    return merged;
+  }
+
   /**
    * Converts an object into a query string format.
    * @param {Object} obj - The object to be converted into a query string.
@@ -214,8 +233,8 @@ export class requests extends Client {
   }
 }
 
-/** 
- * @type {{[key: string]: Requests}} 
+/**
+ * @type {{[key: string]: Requests}}
  */
 let instance = {};
 

@@ -6,6 +6,8 @@ class CategoryTree extends requests {
     super(wikiUrl);
   }
   pages = false;
+  conditionForCategory = true;
+  conditionForThePage = true;
   list = [];
   categorys = [];
   categoryIds = [];
@@ -16,7 +18,8 @@ class CategoryTree extends requests {
    * @param {string} options.categoryId - The ID of the category.
    * @param {string} options.categoryName - The name of the category.
    * @param {boolean} [options.pages=false] - Indicates whether to fetch pages or not.
-   * @param {boolean} [options.withCookie=true] - Indicates whether to use cookies.
+  * @param {boolean} [options.conditionForThePage=true] - Indicates whether to fetch 
+  * @param {boolean} [options.withCookie=true] - Indicates whether to use cookies.
    * @param {string} [options.saveToFile=false] - Indicates whether to save to a file or not.
    * @returns {Promise<Array>} - An array containing the list of pages and categories.
    */
@@ -24,10 +27,14 @@ class CategoryTree extends requests {
     categoryId,
     categoryName,
     pages = false,
+    conditionForThePage,
+    conditionForCategory,
     withCookie = true,
     saveToFile: File = false,
   }) {
     if (pages) this.pages = true;
+    if (conditionForThePage) this.conditionForThePage = conditionForThePage;
+    if (conditionForCategory) this.conditionForCategory = conditionForCategory;
     if (categoryId) {
       await this.createList({ categoryId, withCookie });
     } else if (categoryName) {
@@ -76,7 +83,7 @@ class CategoryTree extends requests {
 
     const options = {
       cmtype: this.pages ? undefined : "subcat",
-      cmnamespace: "0|14"
+      cmnamespace: "0|14",
     };
 
     const data = categoryName
@@ -84,10 +91,20 @@ class CategoryTree extends requests {
       : await this.categoryMembers({ categoryId, withCookie, options });
 
     for (const page of data) {
-      if (page.ns === 14 && !this.categoryIds.includes(page.pageid)) {
+      if (
+        page.ns === 14 &&
+        !this.categoryIds.includes(page.pageid) &&
+        (typeof this.conditionForCategory === "boolean" ||
+          this.conditionForCategory(page.title))
+      ) {
         this.categoryIds.push(page.pageid);
         this.categorys.push(page.title);
-      } else if (page.ns === 0) {
+      } else if (
+        page.ns === 0 &&
+        !this.list.includes(page.title) &&
+        (typeof this.conditionForThePage === "boolean" ||
+          this.conditionForThePage(page.title))
+      ) {
         this.list.push(page.title);
       }
     }
