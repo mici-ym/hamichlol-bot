@@ -43,11 +43,9 @@ function mergeDeep(obj1, obj2) {
 }
 
 function mapIdsToNames(obj) {
-  const newObj = {};
-  for (const key in obj) {
-    newObj[obj[key].title] = obj[key];
-  }
-  return newObj;
+  return Object.fromEntries(
+    Object.entries(obj).map(([, value]) => [value.title, value])
+  );
 }
 
 export { mergeDeep, mapIdsToNames };
