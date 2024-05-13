@@ -53,3 +53,5 @@ class ImageApi {
     });
   }
 }
+
+export default ImageApi
