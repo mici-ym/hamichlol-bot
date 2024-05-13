@@ -1,4 +1,5 @@
 import Client from "./Client.js";
+import { mergeDeep, mapIdsToNames } from "./utils/DataProcessor.js";
 
 const client = new Client("https://www.hamichlol.org.il/w/api.php");
 
@@ -20,6 +21,7 @@ export class requests extends Client {
 
   async queryPages({
     titles,
+    useIdsOrTitles = "ids",
     withCookie = true,
     getContinue = true,
     options = {},
@@ -31,7 +33,12 @@ export class requests extends Client {
       prop: "info",
     };
     Object.assign(queryParams, options);
-    return await this.query({ options: queryParams, withCookie, getContinue });
+    const query = await this.query({
+      options: queryParams,
+      withCookie,
+      getContinue,
+    });
+    return useIdsOrTitles === "ids" ? query : mapIdsToNames(query);
   }
 
   async embeddedin({
@@ -184,7 +191,7 @@ export class requests extends Client {
 
     results = !pages
       ? results.concat(...Object.values(data.query))
-      : results.concat(...Object.values(data.query));
+      : data.query.pages;
     try {
       while (contin) {
         const res = await client.get(
@@ -193,7 +200,7 @@ export class requests extends Client {
         );
         results = !pages
           ? results.concat(...Object.values(res.query))
-          : results.concat(...Object.values(data.query));
+          : mergeDeep(res.query.pages, results);
         contin = res.continue;
       }
       return results;
@@ -201,24 +208,6 @@ export class requests extends Client {
       console.error(error);
       //throw new Error(error);
     }
-  }
-
-  #mergeObjectsWithCommonFields(obj1, obj2) {
-    const merged = {};
-    for (const key in obj1) {
-      if (
-        Object.hasOwnProperty.call(obj1, key) &&
-        Object.hasOwnProperty.call(obj2, key)
-      ) {
-        // מניחים שהערך של 'age' זהה ולכן נשתמש באחד מהם
-
-        merged[key] = {
-          names: [...new Set([...obj1[key].names, ...obj2[key].names])], // מאחד את הרשימות תוך כדי הסרת כפילויות
-          age: obj1[key].age,
-        };
-      }
-    }
-    return merged;
   }
 
   /**
@@ -233,6 +222,8 @@ export class requests extends Client {
   }
 }
 
+/**
+ * @type {{[key: string]: Requests}}
 /**
  * @type {{[key: string]: Requests}}
  */
