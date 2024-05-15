@@ -1,8 +1,6 @@
 import Client from "./Client.js";
 import { mergeDeep, mapIdsToNames } from "./utils/DataProcessor.js";
 
-const client = new Client("https://www.hamichlol.org.il/w/api.php");
-
 /**
  * Represents a class for making HTTP GET requests to a specified URL and retrieving data from a wiki.
  * @constructor
@@ -148,7 +146,7 @@ export class requests extends Client {
       parseParams.section = section;
     }
     Object.assign(parseParams, options);
-    return await client.get(new URLSearchParams(parseParams), false);
+    return await super.get(new URLSearchParams(parseParams), false);
   }
 
   /**
@@ -167,7 +165,7 @@ export class requests extends Client {
     };
     const queryString = new URLSearchParams(queryParams);
 
-    const res = await client.get(queryString, withCookie);
+    const res = await super.get(queryString, withCookie);
     if (!getContinue) {
       return res;
     } else {
@@ -194,7 +192,7 @@ export class requests extends Client {
       : data.query.pages;
     try {
       while (contin) {
-        const res = await client.get(
+        const res = await super.get(
           `${queryString}&${this.#objectToQueryString(contin)}`,
           withCookie
         );
