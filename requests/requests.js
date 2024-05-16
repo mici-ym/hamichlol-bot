@@ -1,5 +1,5 @@
 import Client from "./Client.js";
-import { mergeDeep, mapIdsToNames } from "./utils/DataProcessor.js";
+import { mapIdsToNames, mergeResults } from "./utils/DataProcessor.js";
 
 /**
  * Represents a class for making HTTP GET requests to a specified URL and retrieving data from a wiki.
@@ -183,22 +183,23 @@ export class requests extends Client {
    * @throws {Error} - If an error occurs during the process.
    */
   async getWithContinue(queryString, withCookie, data) {
+    if (!data || !data.query) {
+      throw new Error("the data is not valid");
+    }
+    if (!queryString) {
+      throw new Error("the query string is not valid");
+    }
     let contin = data.continue;
-    let results = [];
-    let pages = "pages" in data.query;
 
-    results = !pages
-      ? results.concat(...Object.values(data.query))
-      : data.query.pages;
+    let results = mergeResults([], data);
+
     try {
       while (contin) {
         const res = await super.get(
           `${queryString}&${this.#objectToQueryString(contin)}`,
           withCookie
         );
-        results = !pages
-          ? results.concat(...Object.values(res.query))
-          : mergeDeep(res.query.pages, results);
+        results = mergeResults(results, res);
         contin = res.continue;
       }
       return results;
