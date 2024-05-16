@@ -8,7 +8,7 @@
     "start": "node app1.js",
     "lint:test": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "jest"
+    "test": "jest --coverage"
   },
   "keywords": [],
   "author": "",
