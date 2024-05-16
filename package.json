@@ -1,5 +1,5 @@
 {
-  "name": "bot-update",
+  "name": "hamichlol-bot",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -11,8 +11,8 @@
     "test": "jest --coverage"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "moti of hamichlol.org.il",
+  "license": "",
   "dependencies": {
     "dotenv": "^16.1.4",
     "node-fetch": "^3.3.1"
