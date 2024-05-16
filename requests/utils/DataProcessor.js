@@ -20,26 +20,26 @@ function mergeDeep(obj1, obj2) {
       // If both values are arrays, merge them
       if (
         Array.isArray(obj1[key]) &&
-        obj1[key]!== null &&
+        obj1[key] !== null &&
         Array.isArray(obj2[key]) &&
-        obj2[key]!== null
+        obj2[key] !== null
       ) {
-        merged[key] = [...obj1[key],...obj2[key]];
-      } 
+        merged[key] = [...obj1[key], ...obj2[key]];
+      }
       // If both values are objects, merge them recursively
       else if (
         typeof obj1[key] === "object" &&
-        obj1[key]!== null &&
+        obj1[key] !== null &&
         typeof obj2[key] === "object" &&
-        obj2[key]!== null
+        obj2[key] !== null
       ) {
         merged[key] = mergeDeep(obj1[key], obj2[key]);
-      } 
+      }
       // If the values are not objects or arrays, keep the value from obj1
       else {
         merged[key] = obj1[key];
       }
-    } 
+    }
     // If the key does not exist in obj2, keep the value from obj1
     else {
       merged[key] = obj1[key];
@@ -48,7 +48,7 @@ function mergeDeep(obj1, obj2) {
 
   // Loop through each key in obj2 that is not already handled
   for (const key in obj2) {
-    if (obj2.hasOwnProperty(key) &&!merged.hasOwnProperty(key)) {
+    if (obj2.hasOwnProperty(key) && !merged.hasOwnProperty(key)) {
       merged[key] = obj2[key];
     }
   }
@@ -70,4 +70,13 @@ function mapIdsToNames(obj) {
   );
 }
 
-export { mergeDeep, mapIdsToNames };
+function mergeResults(existingResults, data) {
+  if ("pages" in data.query) {
+    // נניח שפונקציית mergeDeep כבר מוגדרת כדי למזג עמוק שני אובייקטים.
+    return mergeDeep(existingResults, data.query.pages);
+  } else {
+    return existingResults.concat(...Object.values(data.query));
+  }
+}
+
+export { mapIdsToNames, mergeResults };
