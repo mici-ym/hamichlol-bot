@@ -67,7 +67,7 @@ class Client {
    * @param {String} [password]
    * @returns {Promise<Boolean>}
    */
-  async login(userName, password) {
+  async login(userName, password, assert = "bot") {
     if (userName) {
       this.userName = userName;
     }
@@ -92,7 +92,7 @@ class Client {
       return false;
     }
     this.#cookie = extractCookie(res.headers.raw()["set-cookie"]);
-    this.token = await this.#getToken("csrf&assert=bot");
+    this.token = await this.#getToken("csrf&"+ assert);
     this.isLogedIn = true;
     return true;
   }
@@ -253,11 +253,7 @@ class Client {
     };
     const res = await this.#postWiki(params);
     const parsed = await res.json();
-    if (parsed.error) {
-      console.log(parsed.error.code, title);
-    } else {
-      console.log(parsed.undelete.title);
-    }
+    return parsed;
   }
   async sendMail({ target, subject, text }) {
     const mailParams = {
@@ -269,8 +265,7 @@ class Client {
     };
     const res = await this.#postWiki(mailParams);
     const parsed = await res.json();
-    console.log(parsed);
-    return parsed?.emailuser?.result;
+    return parsed
   }
   async sendMessageToTalkPage({ page, topic, content }) {
     const { csrftoken: token } = await this.#getToken("csrf&assert=bot");
