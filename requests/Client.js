@@ -51,10 +51,15 @@ class Client {
     if (!this.isLogedIn && withCookie) {
       await this.login();
     }
-    const res = await fetch(`${this.wikiUrl}?${queryString}`, {
-      headers: { cookie: this.#cookie },
-    });
-    return res.json();
+    try {
+      const res = await fetch(`${this.wikiUrl}?${queryString}`, {
+        headers: { cookie: this.#cookie },
+      });
+      return res.json();
+    } catch (error) {
+      console.error(error);
+      throw new Error(error);
+    }
   }
   /**
    * method to login the user and get a cookie for forther operations
