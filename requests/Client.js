@@ -55,6 +55,10 @@ class Client {
       const res = await fetch(`${this.wikiUrl}?${queryString}`, {
         headers: { cookie: this.#cookie },
       });
+      if (res.status !== 200) {
+        console.error(`Error: ${res.status}`);
+        throw new Error(`Status: ${res.status}`);
+      }
       return res.json();
     } catch (error) {
       console.error(error);
