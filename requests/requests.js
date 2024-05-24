@@ -30,6 +30,7 @@ export class requests extends Client {
       titles,
       prop: "info",
     };
+    if (!titles) delete queryParams.titles;
     Object.assign(queryParams, options);
     const query = await this.query({
       options: queryParams,

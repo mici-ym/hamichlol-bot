@@ -96,7 +96,7 @@ class Client {
       return false;
     }
     this.#cookie = extractCookie(res.headers.raw()["set-cookie"]);
-    this.token = await this.#getToken("csrf&"+ assert);
+    this.token = await this.#getToken("csrf&" + assert);
     this.isLogedIn = true;
     return true;
   }
@@ -149,8 +149,10 @@ class Client {
     baseRevId: baserevid,
     summary,
     nocreate = 1,
+    createonly,
     section,
     sectiontitle,
+    tags,
   }) {
     if (!title && !pageid) {
       throw new Error(
@@ -167,21 +169,20 @@ class Client {
       minor: 1,
       bot: 1,
       nocreate,
+      createonly,
       baserevid,
       section,
       sectiontitle,
+      tags,
       token: this.token.csrftoken,
     };
     if (!nocreate) delete editParams.nocreate;
-    if (!baserevid) {
-      delete editParams.baserevid;
-    }
-    if (!section) {
-      delete editParams.section;
-    }
-    if (!sectiontitle) {
-      delete editParams.sectiontitle;
-    }
+    if (!createonly) delete editParams.createonly;
+    if (!baserevid) delete editParams.baserevid;
+    if (!section) delete editParams.section;
+    if (!sectiontitle) delete editParams.sectiontitle;
+    if (!tags) delete editParams.tags;
+    
     if (title) {
       editParams.title = title;
     } else {
@@ -269,7 +270,7 @@ class Client {
     };
     const res = await this.#postWiki(mailParams);
     const parsed = await res.json();
-    return parsed
+    return parsed;
   }
   async sendMessageToTalkPage({ page, topic, content }) {
     const { csrftoken: token } = await this.#getToken("csrf&assert=bot");
