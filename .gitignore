@@ -1,8 +1,6 @@
 /node_modules/
-/Wiki
-requests.test.js
-test.js
-Word_list.js
-/scriptes/app1.js
+/src/Wiki
 /.github/workflows/Deploy-to-Server.yml
-localSettings.php
+/logs/
+/src/logging.js
+*.log
