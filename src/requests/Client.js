@@ -2,6 +2,8 @@ import fetch from "node-fetch";
 import dotenv from "dotenv";
 dotenv.config();
 import { extractCookie } from "./utils/cookie.js";
+import logger from "../logger.js";
+
 /**
  * client for mediawiki wiki api,
  * use only with A user with bot rights,
@@ -28,18 +30,32 @@ class Client {
     this.isLogedIn = false;
   }
   async #postWiki(body) {
-    return fetch(this.wikiUrl, {
-      headers: {
-        "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "user-agent": "node-fetch mw-api-node-client",
-        cookie: this.#cookie,
-      },
-      method: "POST",
-      credentials: "include",
-      body: new URLSearchParams({ format: "json", utf8: 1, ...body }),
-    });
-  }
+    try {
+      const response = await fetch(this.wikiUrl, {
+        headers: {
+          "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "user-agent": "node-fetch mw-api-node-client",
+          cookie: this.#cookie,
+        },
+        method: "POST",
+        credentials: "include",
+        body: new URLSearchParams({ format: "json", utf8: 1, ...body }),
+      });
 
+      if (!response.ok) {
+        const error = new Error(`HTTP error! status: ${response.status}`);
+        logger.error(`Failed to post to wiki: ${error.message}`);
+        throw error;
+      }
+      if (body.action === "login") {
+        this.#cookie = extractCookie(response.headers.raw()["set-cookie"]);
+      }
+      return await response.json();
+    } catch (error) {
+      logger.error(`Error in #postWiki: ${error.message}`, error);
+      throw error;
+    }
+  }
   /**
    * Makes a GET request to a specified URL with an optional query string.
    *
@@ -56,12 +72,12 @@ class Client {
         headers: { cookie: this.#cookie },
       });
       if (res.status !== 200) {
-        console.error(`Error: ${res.status}`);
+        logger.error(`Error: ${res.status}`);
         throw new Error(`Status: ${res.status}`);
       }
       return res.json();
     } catch (error) {
-      console.error(error);
+      logger.error(`Error in get: ${error.message}`, error);
       throw new Error(error);
     }
   }
@@ -79,6 +95,7 @@ class Client {
       this.#password = password;
     }
     if (!this.userName || !this.#password) {
+      logger.error("you dinwt pass your user name or your password");
       throw new Error("you dinwt pass your user name or your password");
     }
     const { logintoken: lgtoken } = await this.#getToken("login");
@@ -88,17 +105,20 @@ class Client {
       lgpassword: this.#password,
       lgtoken,
     };
-    const res = await this.#postWiki(loginParams);
-    const { login } = await res.json();
-    if (!login.result || login.result !== "Success") {
-      console.log(login);
-      this.isLogedIn = false;
-      return false;
+    try {
+      const { login } = await this.#postWiki(loginParams);
+      if (!login.result || login.result !== "Success") {
+        logger.error(`Error in login: ${login.message}`, login);
+        this.isLogedIn = false;
+        return false;
+      }
+      logger.info("logged in successfully");
+      this.token = await this.#getToken("csrf&" + assert);
+      this.isLogedIn = true;
+      return true;
+    } catch (error) {
+      throw new Error(error);
     }
-    this.#cookie = extractCookie(res.headers.raw()["set-cookie"]);
-    this.token = await this.#getToken("csrf&" + assert);
-    this.isLogedIn = true;
-    return true;
   }
   async logout() {
     const logOutParams = {
@@ -106,8 +126,8 @@ class Client {
       token: this.token,
     };
     this.#postWiki(logOutParams)
-      .then(() => console.log("loged out successfully"))
-      .catch((err) => console.log(err));
+      .then(() => logger.info("loged out successfully"))
+      .catch((err) => logger.warn(err));
   }
   /**
    *
@@ -115,19 +135,23 @@ class Client {
    * @returns {Promise<Object>}
    */
   async #getToken(type) {
-    const res = await fetch(
-      `${this.wikiUrl}?action=query&format=json&meta=tokens&type=${type}`,
-      {
-        headers: {
-          cookie: this.#cookie || "",
-        },
+    try { 
+      const res = await fetch(
+        `${this.wikiUrl}?action=query&format=json&meta=tokens&type=${type}`,
+        {
+          headers: {
+            cookie: this.#cookie || "",
+          },
+        }
+      );
+      const jsonRes = await res.json();
+      if (res.headers.raw()["set-cookie"]) {
+        this.#cookie = extractCookie(res.headers.raw()["set-cookie"]);
       }
-    );
-    const jsonRes = await res.json();
-    if (res.headers.raw()["set-cookie"]) {
-      this.#cookie = extractCookie(res.headers.raw()["set-cookie"]);
+      return jsonRes.query.tokens;
+    } catch (error) {
+      logger.error(`Error in #getToken: ${error.message}`, error);
     }
-    return jsonRes.query.tokens;
   }
   /**
    * method for making edit, you most provide title or pageid, providing both will return error from the api, you most even provide text, all other arguments are optional
@@ -135,63 +159,60 @@ class Client {
    * @param {String} [param.title]
    * @param {Number} [param.pageId]
    * @param {String} param.text
-   * @param {Number} [param.baseRevId]
    * @param {String} [param.summary]
-   * @param {Number} param.nocreate
-   * @param {Number|String} [param.section]
-   * @param {String} [param.sectiontitle]
+   * @param {Boolean} [param.minor]
+   * @param {Boolean} [param.bot]
+   * @param {Object} [param.otherParams]
    * @returns {Promise<String>}
    */
-  async edit({
-    title,
-    pageId: pageid,
-    text,
-    baseRevId: baserevid,
-    summary,
-    nocreate = 1,
-    createonly,
-    section,
-    sectiontitle,
-    tags,
-  }) {
-    if (!title && !pageid) {
-      throw new Error(
-        "you didn't pass the details of the article you want to edit"
-      );
-    }
-    if (!this.isLogedIn) {
-      await this.login();
-    }
-    const editParams = {
-      action: "edit",
-      text,
-      summary: summary || "",
-      minor: 1,
-      bot: 1,
-      nocreate,
-      createonly,
-      baserevid,
-      section,
-      sectiontitle,
-      tags,
-      token: this.token.csrftoken,
-    };
-    if (!nocreate) delete editParams.nocreate;
-    if (!createonly) delete editParams.createonly;
-    if (!baserevid) delete editParams.baserevid;
-    if (!section) delete editParams.section;
-    if (!sectiontitle) delete editParams.sectiontitle;
-    if (!tags) delete editParams.tags;
-    
-    if (title) {
-      editParams.title = title;
-    } else {
-      editParams.pageid = pageid;
-    }
-    const res = await this.#postWiki(editParams);
-    const { edit, error } = await res.json();
-    return edit || error;
+async edit({
+  title,
+  pageId,
+  text,
+  summary = '',
+  minor = true,
+  bot = true,
+  ...otherParams
+} = {}) {
+  if (!title && !pageId) {
+    logger.error("you didn't pass the details of the article you want to edit");
+    throw new Error("you didn't pass the details of the article you want to edit");
   }
+  if (!text) {
+    logger.error("you didn't pass the text of the article you want to edit");
+    throw new Error("you didn't pass the text of the article you want to edit");
+  }
+
+  if (!this.isLogedIn) {
+    await this.login();
+  }
+
+  const editParams = Object.fromEntries(
+    Object.entries({
+      action: 'edit',
+      title,
+      pageid: pageId,
+      text,
+      summary,
+      minor: minor ? 1 : undefined,
+      bot: bot ? 1 : undefined,
+      token: this.token.csrftoken,
+      ...otherParams
+    }).filter(([, v]) => v !== undefined)
+  );
+
+  try {
+    const result = await this.#postWiki(editParams);
+    if (result.error) {
+      logger.error(`Edit failed: ${result.error.info}`, result);
+      throw new Error(`Edit failed: ${result.error.info}`);
+    }
+    return result;
+  } catch (error) {
+    logger.error(`Error in edit: ${error.message}`);
+    throw error;
+  }
+}
   /**
    * method to delete article
    * @param {String} title
@@ -206,10 +227,8 @@ class Client {
       reason,
     };
     if (!reason) delete deleteParams.reason;
-    const res = await this.#postWiki(deleteParams);
-    const parsed = await res.json();
-    console.log(parsed?.delete?.title || `problem deleting ${title}`);
-    return parsed;
+    return await this.#postWiki(deleteParams);
+
   }
   /**
    * method for moving pages
@@ -243,9 +262,7 @@ class Client {
     if (!movetalk) delete moveParams.movetalk;
     if (!movesubpages) delete moveParams.movesubpages;
     if (!noredirect) delete moveParams.noredirect;
-    const res = await this.#postWiki(moveParams);
-    const parsed = await res.json();
-    return parsed;
+    return await this.#postWiki(moveParams);
   }
   async unDelete({ title, reason }) {
     const params = {
@@ -256,9 +273,7 @@ class Client {
       token: this.token,
       utf8: 1,
     };
-    const res = await this.#postWiki(params);
-    const parsed = await res.json();
-    return parsed;
+    return await this.#postWiki(params);
   }
   async sendMail({ target, subject, text }) {
     const mailParams = {
@@ -268,9 +283,7 @@ class Client {
       text,
       token: target.token,
     };
-    const res = await this.#postWiki(mailParams);
-    const parsed = await res.json();
-    return parsed;
+    return await this.#postWiki(mailParams);
   }
   async sendMessageToTalkPage({ page, topic, content }) {
     const { csrftoken: token } = await this.#getToken("csrf&assert=bot");
@@ -282,8 +295,7 @@ class Client {
       nttopic: topic,
       ntcontent: content,
     };
-    const res = await this.#postWiki(flowParams);
-    const parsed = await res.json();
+    const parsed = await this.#postWiki(flowParams);
     if (parsed?.error?.code === "invalid-page") {
       return await this.edit({
         title: page,

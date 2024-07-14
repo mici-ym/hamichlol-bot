@@ -1,5 +1,6 @@
 import Client from "./Client.js";
 import { mapIdsToNames, mergeResults } from "./utils/DataProcessor.js";
+import logger from "../logger.js";
 
 /**
  * Represents a class for making HTTP GET requests to a specified URL and retrieving data from a wiki.
@@ -11,6 +12,7 @@ export class requests extends Client {
   wikiUrl = "";
   constructor(wikiUrl) {
     if (!wikiUrl) {
+      logger.error("you didn't pass the url of your wiki");
       throw new Error("you didn't pass the url of your wiki");
     }
     super(wikiUrl);
@@ -37,7 +39,7 @@ export class requests extends Client {
       withCookie,
       getContinue,
     });
-    return useIdsOrTitles === "ids" ? query : mapIdsToNames(query);
+    return useIdsOrTitles === "ids" ? query : mapIdsToNames(query, "title");
   }
 
   async embeddedin({
@@ -55,6 +57,7 @@ export class requests extends Client {
       eilimit: "max",
     };
     if (pageid && title) {
+      logger.error("you must provide either pageid or title");
       throw new Error("you must provide either pageid or title");
     }
     if (pageid) {
@@ -67,17 +70,17 @@ export class requests extends Client {
     return await this.query({ options: queryParams, withCookie, getContinue });
   }
 
+  /**
+   * Queries the wiki API for the members of a specific category.
+   *
+   * @param {Object} options - The options for the query request.
+   * @param {string} options.categoryName - The name of the category whose members are to be queried.
+   * @param {boolean} [options.withCookie=true] - A flag indicating whether to use a cookie for the request.
+   * @param {boolean} [options.getContinue=true] - A flag indicating whether to retrieve all results using continuation.
+   * @param {Object} [options.options={}] - Additional options for the query request.
+   * @returns {Promise<Object>} - A promise that resolves to the query result in JSON format.
+   */
   async categoryMembers({
-    /**
-     * Queries the wiki API for the members of a specific category.
-     *
-     * @param {Object} options - The options for the query request.
-     * @param {string} options.categoryName - The name of the category whose members are to be queried.
-     * @param {boolean} [options.withCookie=true] - A flag indicating whether to use a cookie for the request.
-     * @param {boolean} [options.getContinue=true] - A flag indicating whether to retrieve all results using continuation.
-     * @param {Object} [options.options={}] - Additional options for the query request.
-     * @returns {Promise<Object>} - A promise that resolves to the query result in JSON format.
-     */
     categoryName,
     categoryId,
     withCookie = true,
@@ -92,6 +95,7 @@ export class requests extends Client {
       cmlimit: "max",
     };
     if ((categoryId || options.categoryId) && categoryName) {
+      logger.error("you must provide either categoryId or categoryName");
       throw new Error("you must provide either categoryId or categoryName");
     }
     if (categoryId || options.categoryId) {
@@ -135,6 +139,7 @@ export class requests extends Client {
       prop: prop || "wikitext",
     };
     if (page && pageid) {
+      logger.error("you can't pass both page and pageid");
       throw new Error("you can't pass both page and pageid");
     }
     if (page) {
@@ -185,9 +190,11 @@ export class requests extends Client {
    */
   async getWithContinue(queryString, withCookie, data) {
     if (!data || !data.query) {
+      logger.error("the data is not valid");
       throw new Error("the data is not valid");
     }
     if (!queryString) {
+      logger.error("the query string is not valid");
       throw new Error("the query string is not valid");
     }
     let contin = data.continue;
@@ -205,6 +212,7 @@ export class requests extends Client {
       }
       return results;
     } catch (error) {
+      logger.error(error);
       console.error(error);
       //throw new Error(error);
     }
@@ -224,10 +232,8 @@ export class requests extends Client {
 
 /**
  * @type {{[key: string]: Requests}}
-/**
- * @type {{[key: string]: Requests}}
  */
-let instance = {};
+let instance = new Map();
 
 /**
  * Get or create an instance of Requests.

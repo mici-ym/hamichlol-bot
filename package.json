@@ -8,17 +8,19 @@
     "start": "node app1.js",
     "lint:test": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "jest --coverage"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
   },
   "keywords": [],
   "author": "moti of hamichlol.org.il",
   "license": "",
   "dependencies": {
     "dotenv": "^16.1.4",
-    "node-fetch": "^3.3.1"
+    "node-fetch": "^3.3.1",
+    "winston": "^3.13.0"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.23.6",
+    "babel-jest": "^29.7.0",
     "eslint": "^8.56.0"
   }
 }

@@ -12,7 +12,9 @@
  */
 function mergeDeep(obj1, obj2) {
   const merged = {};
-
+  if (Array.isArray(obj2)) {
+    obj2 = mapIdsToNames(obj2, "pageid");
+  }
   // Loop through each key in obj1
   for (const key in obj1) {
     // Check if the key exists in obj2
@@ -64,9 +66,9 @@ function mergeDeep(obj1, obj2) {
  * @param {Object<object>} obj - The original object to transform. The values of this object should be objects themselves, each containing a `title` property.
  * @returns {Object} A new object where each key is the `title` from the original object's values, and the value is the original value from the input object.
  */
-function mapIdsToNames(obj) {
+function mapIdsToNames(obj, key) {
   return Object.fromEntries(
-    Object.entries(obj).map(([, value]) => [value.title, value])
+    Object.entries(obj).map(([, value]) => [value[key], value])
   );
 }
 
