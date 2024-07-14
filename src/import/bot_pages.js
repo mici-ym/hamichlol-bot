@@ -1,45 +1,38 @@
-import { wordesOfBots } from "./check/liste's.js";
+import lists from "./check/liste's.json";
+import getProperties from "../import/utils.js";
 
-export function botText(text) {
-  const regex1 = /==.*==/g;
-  const regex2 = "\n\n";
-  const regex3 = /\[\[קטגוריה:[^\]]\]\]/g;
-  const regex4 = /{{מיון רגיל:.+}}/;
-  let textList;
-  let categoriesToAdd;
-  let defaultsortToAdd;
-  let newText;
-  let first;
-  textList = text.split(regex1);
-  if (textList.length < 3) {
-    textList = text.split(regex2);
-    first = textList[0];
+
+export function botText(data, classification) {
+  const parsedText = data.wikitext["*"];
+  let text;
+
+  if (data.sections.length < 2) {
+    text = parsedText.split("\n\n")[0];
   } else {
-    first = textList[0];
+    text = parsedText.split(/==.+==/)[0];
   }
-  categoriesToAdd = text.match(regex3);
-  defaultsortToAdd = text.match(regex4);
-  if (defaultsortToAdd) {
-    newText = `${first}\n${defaultsortToAdd.join()}\n${categoriesToAdd.join(
-      "\n"
-    )}`;
-  } else {
-    newText = `${first}\n${categoriesToAdd.join("\n")}`;
-  }
-  return removePhotos(newText);
+  text = removePhotos(text);
+  text = defaultsortAndCategories(text, data);
+  text = text += `\n{{בוט ${classification}}}`;
+  return text;
 }
 
-/**
- *
- * @param {string} text
- * @returns {string}
- */
 function removePhotos(text) {
   const regex1 = /(?<!סמל ?= ?)\[\[קובץ:.+\]\]\n?/g;
-  const regex2 = /\|\s?תמונה[^|}]*\n/g;
+  const regex2 = /\|\s?תמונה\s?=[^{}\n|]*\n?/g;
   let textWithoutImages = text.replace(regex1, "").replace(regex2, "");
   return textWithoutImages;
 }
+
+function defaultsortAndCategories(text, data) {
+  const defaultsort = getProperties(data, "defaultsort");
+  if (defaultsort) text += `\n{{מיון רגיל:${defaultsort}}}`;
+  const categoryRegex = /\[\[קטגוריה:(.+)\]\]/g;
+  const categories = data.wikitext["*"].match(categoryRegex);
+  if (categories && categories.length > 0) text += `\n${categories.join("\n") || ""}`;
+  return text;
+}
+
 
 /**
  * Checks if a given text contains any words from a predefined list of words related to sports.
@@ -47,6 +40,7 @@ function removePhotos(text) {
  * @returns {(string|Array|boolean)} - The found word(s) if there is only one or two matches, false otherwise.
  */
 export function checkBot(text) {
+  const wordesOfBots = lists.wordesOfBots;
   const foundWords = [];
 
   for (let listName in wordesOfBots) {
