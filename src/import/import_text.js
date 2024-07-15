@@ -1,5 +1,5 @@
-//import getRequestsInstance  from "..requests/requests.js";
-import { requests } from "../requests/requests.js";
+import { getRequestsInstance } from "../requests/requests.js";
+//import { requests } from "../requests/requests.js";
 import checkWord from "./check/filter.js";
 import getProperties from "../import/utils.js";
 import * as botPages from "./bot_pages.js";
@@ -10,18 +10,22 @@ import logger from "../logger.js";
  * @param {string} title - The title of the Wikipedia page to import text from.
  * @returns {Promise<{text: string, summary: string}>} - A promise that resolves to an object containing the modified text and the update summary.
  */
-export async function importText(title, { checkBot, bot }) {
+export async function importText(title, { checkBot, bot } = {}) {
   try {
-    const request = new requests("https://he.wikipedia.org/w/api.php");
-    //const request = getRequestsInstance("https://he.wikipedia.org/w/api.php", "wiki");
+    //const request = new requests("https://he.wikipedia.org/w/api.php");
+    const request = getRequestsInstance("wiki");
+    let isImage = false;
     const { parse } = await request.parse({
       page: title,
-      prop: "templates|images|wikitext|sections",
+      prop: "templates|images|wikitext|sections|revid|properties",
     });
+    if (parse.images.length > 0) {
+      isImage = true;
+    }
 
     const sinun = checkWord(parse.wikitext["*"]);
     if (sinun) {
-      logger.info(`sinun ${title}`, { service: "filter", ...sinun});
+      logger.info(`sinun ${title}`, { service: "filter", ...sinun });
       return sinun;
     }
 
@@ -55,10 +59,9 @@ export async function importText(title, { checkBot, bot }) {
     let summary = `עדכון מוויקיפדיה גרסה ${dataPage["גרסה"]}`;
     if (bot) summary += `, בוט ${bot}`;
 
-    return { text, summary };
+    return { text, summary, isImage };
   } catch (error) {
     console.error(error);
     throw new Error(error);
   }
 }
-

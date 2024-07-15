@@ -1,3 +1,4 @@
+import logger from "../logger.js";
 import { requests } from "../requests/requests.js";
 
 const request = new requests("https://www.hamichlol.org.il/w/api.php");
@@ -23,7 +24,7 @@ async function removeReplacementImages() {
     const res   = await request.query({ options: queryParams });
     let count = 0;
     for (const page of Object.values(res)) {
-      if (count == 10) break;
+      if (count == 150) break;
       let content = page.revisions[0].slots.main.content;
       const regex = /\{\{תמונה (חילופית|הדורשת החלפה)\|[^:\n]+:([^|\]]+)[^}]+\}\}/g;
       let listFilesOfRemove = [];
@@ -48,10 +49,10 @@ async function removeReplacementImages() {
           tags: "הסרת תבנית תמונה חילופית",
           nocreate: 1
         })
-
+        logger.info(`page ${page.title} removed ${listFilesOfRemove.length} files`)
     }
   } catch (error) {
-    console.error(error);
+    logger.error(error);
   }
 
 }

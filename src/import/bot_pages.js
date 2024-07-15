@@ -1,4 +1,4 @@
-import lists from "./check/liste's.json";
+import lists from "./check/listes.json" with {type: 'json'};
 import getProperties from "../import/utils.js";
 
 
