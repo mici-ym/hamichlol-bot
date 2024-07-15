@@ -1,4 +1,4 @@
-import lists from "./liste's.json";
+import lists from "./listes.json" with {type: 'json'};
 
 /**
  * Checks if words or phrases from the given text are included in any of the lists.
@@ -18,14 +18,15 @@ function checkWord(text) {
           foundWords[listName] = [];
         }
         foundWords[listName].push({ 
-          expression: word, 
-          matched: matches[0][0], 
+          expression: regex, 
+          matched: matches[0][0],
+          input: text.substring(matches[0].index - 15, matches[0].index + 10),
           count: matches.length 
         });
       }
     });
   });
-
+ 
   return Object.keys(foundWords).length > 0 ? foundWords : false;
 }
 

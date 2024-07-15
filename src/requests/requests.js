@@ -238,12 +238,14 @@ let instance = new Map();
 /**
  * Get or create an instance of Requests.
  *
- * @param {string} wikiUrl - The URL to use for the requests.
  * @param {string} [nameInstance="hamichlol"] - The name of the instance.
+ * @param {string} wikiUrl - The URL to use for the requests.
  * @returns {requests} An instance of the `Requests` class.
  */
-export function getRequestsInstance(wikiUrl, nameInstance = "hamichlol") {
+export function getRequestsInstance(nameInstance = "hamichlol", wikiUrl) {
+  wikiUrl = nameInstance === "hamichlol" ? "https://www.hamichlol.org.il/w/api.php" :  !wikiUrl || process.platform === "win32" ? "https://www.hamichlol.org.il/import/get_wik1i.php" : "https://he.wikipedia.org/api.php";
   if (!instance[nameInstance]) {
+    logger.info("creating instance: " + nameInstance);    
     instance[nameInstance] = new requests(wikiUrl);
   }
   return instance[nameInstance];

@@ -4,3 +4,4 @@
 /logs/
 /src/logging.js
 *.log
+*.env
