@@ -1,3 +1,4 @@
+// eslint-disable-next-line
 import lists from "./listes.json" with {type: 'json'};
 
 /**
