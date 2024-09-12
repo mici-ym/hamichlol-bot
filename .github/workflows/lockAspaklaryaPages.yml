@@ -10,7 +10,7 @@ jobs:
       - name: Read last run date
         run: echo "LAST_RUN=$(cat last_successful_run_lock_pages.txt)" >> $GITHUB_ENV
       - name: lock and unlock pages
-        run: node src/scriptes/lockTInryArticeln.js
+        run: node src/scriptes/manageLockPage.js
         env:
           MC_USER: ${{secrets.MC_USER}}
           MC_PASSWORD: ${{secrets.MC_PASSWORD}}

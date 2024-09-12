@@ -3,7 +3,7 @@ import logger from "../logger.js";
 
 const request = getRequestsInstance();
 
-async function cat() {
+async function cat(gcmstart) {
   try {
     const query = await request.query({
       options: {
@@ -14,7 +14,7 @@ async function cat() {
         gcmtitle: "קט:המכלול: ערכים מילוניים",
         gcmlimit: "max",
         gcmsort: "timestamp",
-        gcmstart: "2024-09-10T10:20:21.000Z",
+        gcmstart,
       },
     });
     let count = 0;
@@ -35,7 +35,7 @@ async function cat() {
   }
 }
 
-async function rc() {
+async function rc(rcstart) {
   const params = {
     prop: "info|categories",
     generator: "recentchanges",
@@ -45,6 +45,8 @@ async function rc() {
     clcategories: "קטגוריה:המכלול: ערכים מילוניים",
     grcnamespace: "0",
     grctag: "פתיחת ערך חסום",
+    grcstart: rcstart,
+    grcdir: "newer",
     grclimit: "max",
     grctype: "edit",
   };
@@ -83,8 +85,9 @@ async function rc() {
 }
 
 async function main() {
-  await cat();
-  await rc();
+  const start = process.env.LAST_RUN || new Date(new Date().getTime() - 1000 * 60 * 60 * 24 * 7).toISOString(); // 7 days ago
+  await cat(start);
+  await rc(start);
   request.logout();
 }
 main();
