@@ -29,6 +29,17 @@ class Client {
     this.wikiUrl = wikiUrl;
     this.isLogedIn = false;
   }
+  /**
+   * Sends a POST request to the MediaWiki API with the provided body parameters.
+   * This private method handles authentication, error logging, and cookie management.
+   *
+   * @private
+   * @async
+   * @param {Object} body - An object containing the parameters to be sent in the request body.
+   * @param {string} [body.action] - The action to be performed. If 'login', updates the cookie.
+   * @returns {Promise<Object>} The JSON response from the MediaWiki API.
+   * @throws {Error} Throws an error if the HTTP response is not ok or if there's any other error during the process.
+   */
   async #postWiki(body) {
     try {
       const response = await fetch(this.wikiUrl, {
@@ -120,6 +131,15 @@ class Client {
       throw new Error(error);
     }
   }
+  /**
+   * Logs out the current user from the MediaWiki API.
+   * This method sends a logout request to the API using the stored token.
+   * It logs the success or failure of the logout operation.
+   *
+   * @async
+   * @returns {Promise<void>} A promise that resolves when the logout process is complete.
+   * @throws {Error} If there's an error during the logout process, it's caught and logged as a warning.
+   */
   async logout() {
     const logOutParams = {
       action: "logout",
@@ -134,8 +154,18 @@ class Client {
    * @param {String} type
    * @returns {Promise<Object>}
    */
+  /**
+   * Retrieves a token from the MediaWiki API for a specified action type.
+   * This private method handles the API request to get the token and updates the cookie if a new one is provided.
+   *
+   * @private
+   * @async
+   * @param {string} type - The type of token to retrieve (e.g., 'login', 'csrf', etc.).
+   * @returns {Promise<Object|undefined>} An object containing the requested token, or undefined if an error occurs.
+   * @throws {Error} Logs the error message if the token retrieval fails.
+   */
   async #getToken(type) {
-    try { 
+    try {
       const res = await fetch(
         `${this.wikiUrl}?action=query&format=json&meta=tokens&type=${type}`,
         {
@@ -153,82 +183,95 @@ class Client {
       logger.error(`Error in #getToken: ${error.message}`, error);
     }
   }
+
   /**
-   * method for making edit, you most provide title or pageid, providing both will return error from the api, you most even provide text, all other arguments are optional
-   * @param {Object} param
-   * @param {String} [param.title]
-   * @param {Number} [param.pageId]
-   * @param {String} param.text
-   * @param {String} [param.summary]
-   * @param {Boolean} [param.minor]
-   * @param {Boolean} [param.bot]
-   * @param {Object} [param.otherParams]
-   * @returns {Promise<String>}
+   * Edits a page on the wiki using the MediaWiki API.
+   *
+   * @async
+   * @param {Object} options - The options for editing the page.
+   * @param {string} [options.title] - The title of the page to edit. Either title or pageId must be provided.
+   * @param {number} [options.pageId] - The ID of the page to edit. Either title or pageId must be provided.
+   * @param {string} options.text - The new content to set for the page.
+   * @param {string} [options.summary=''] - A summary of the edit.
+   * @param {boolean} [options.minor=true] - Whether the edit is minor.
+   * @param {boolean} [options.bot=true] - Whether the edit is made by a bot.
+   * @param {object} [options.otherParams] - Additional parameters to pass to the API.
+   * @throws {Error} Throws an error if neither title nor pageId is provided, or if text is not provided.
+   * @returns {Promise<Object>} A promise that resolves with the API response object.
    */
-async edit({
-  title,
-  pageId,
-  text,
-  summary = '',
-  minor = true,
-  bot = true,
-  ...otherParams
-} = {}) {
-  if (!title && !pageId) {
-    logger.error("you didn't pass the details of the article you want to edit");
-    throw new Error("you didn't pass the details of the article you want to edit");
-  }
-  if (!text) {
-    logger.error("you didn't pass the text of the article you want to edit");
-    throw new Error("you didn't pass the text of the article you want to edit");
-  }
-
-  if (!this.isLogedIn) {
-    await this.login();
-  }
-
-  const editParams = Object.fromEntries(
-    Object.entries({
-      action: 'edit',
-      title,
-      pageid: pageId,
-      text,
-      summary,
-      minor: minor ? 1 : undefined,
-      bot: bot ? 1 : undefined,
-      token: this.token.csrftoken,
-      ...otherParams
-    }).filter(([, v]) => v !== undefined)
-  );
-
-  try {
-    const result = await this.#postWiki(editParams);
-    if (result.error) {
-      logger.error(`Edit failed: ${result.error.info}`, result);
-      throw new Error(`Edit failed: ${result.error.info}`);
+  async edit({
+    title,
+    pageId,
+    text,
+    summary = "",
+    minor = true,
+    bot = true,
+    ...otherParams
+  } = {}) {
+    if (!title && !pageId) {
+      logger.error(
+        "you didn't pass the details of the article you want to edit"
+      );
+      throw new Error(
+        "you didn't pass the details of the article you want to edit"
+      );
     }
-    return result;
-  } catch (error) {
-    logger.error(`Error in edit: ${error.message}`);
-    throw error;
+    if (!text) {
+      logger.error("you didn't pass the text of the article you want to edit");
+      throw new Error(
+        "you didn't pass the text of the article you want to edit"
+      );
+    }
+
+    if (!this.isLogedIn) {
+      await this.login();
+    }
+
+    const editParams = Object.fromEntries(
+      Object.entries({
+        action: "edit",
+        title,
+        pageid: pageId,
+        text,
+        summary,
+        minor: minor ? 1 : undefined,
+        bot: bot ? 1 : undefined,
+        token: this.token.csrftoken,
+        ...otherParams,
+      }).filter(([, v]) => v !== undefined)
+    );
+
+    try {
+      const result = await this.#postWiki(editParams);
+      if (result.error) {
+        logger.error(`Edit failed: ${result.error.info}`, result);
+        throw new Error(`Edit failed: ${result.error.info}`);
+      }
+      return result;
+    } catch (error) {
+      logger.error(`Error in edit: ${error.message}`);
+      throw error;
+    }
   }
-}
+
   /**
    * method to delete article
    * @param {String} title
    * @param {String} [reason]
    */
-  async delete(title, reason) {
+  async delete(title, pageid, reason) {
     if (!this.isLogedIn) await this.login();
     const deleteParams = {
       action: "delete",
       title,
+      pageid,
       token: this.token.csrftoken,
       reason,
     };
-    if (!reason) delete deleteParams.reason;
+    Object.keys(deleteParams).forEach((key) => {
+      if (deleteParams[key] === undefined) delete deleteParams[key];
+    });
     return await this.#postWiki(deleteParams);
-
   }
   /**
    * method for moving pages
@@ -263,6 +306,35 @@ async edit({
     if (!movesubpages) delete moveParams.movesubpages;
     if (!noredirect) delete moveParams.noredirect;
     return await this.#postWiki(moveParams);
+  }
+
+  /**
+   * Locks a page on the wiki using the MediaWiki API.
+   *
+   * @async
+   * @param {Object} options - The options for locking the page.
+   * @param {string} [options.title] - The title of the page to lock. Either title or pageId must be provided.
+   * @param {number} [options.pageid] - The ID of the page to lock. Either title or pageId must be provided.
+   * @param {string} options.level - The protection level to apply to the page.
+   * @param {string} [options.reason] - The reason for locking the page.
+   * @throws {Error} Throws an error if no lock level is provided or if neither title nor pageId is provided.
+   * @returns {Promise<Object>} A promise that resolves with the API response object for the lock action.
+   */
+  async lockPage({ title, pageid, level, reason }) {
+    if (!this.isLogedIn) await this.login();
+    if (!level) throw new Error("You must provide a lock level");
+    const lockParams = {
+      action: "aspaklaryalockdown",
+      level,
+      reason,
+      token: this.token.csrftoken,
+    };
+    if (!pageid && !title) {
+      throw new Error("You must provide a title or pageid");
+    } else if (pageid) {
+      lockParams.pageid = pageid;
+    } else lockParams.title = title;
+    return await this.#postWiki(lockParams);
   }
   async unDelete({ title, reason }) {
     const params = {

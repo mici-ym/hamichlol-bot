@@ -1,4 +1,3 @@
-/* eslint-disable no-prototype-builtins */
 /**
  * A function to merge two JavaScript objects deeply.
  * If both objects have the same key and the value of the key is an array, it will merge the arrays.
@@ -64,6 +63,7 @@ function mergeDeep(obj1, obj2) {
  * It is useful for converting arrays of objects into a keyed object, where each key corresponds to a unique identifier like a title.
  *
  * @param {Object<object>} obj - The original object to transform. The values of this object should be objects themselves, each containing a `title` property.
+ * @param {string} key - The key in the original object's values that should be used as
  * @returns {Object} A new object where each key is the `title` from the original object's values, and the value is the original value from the input object.
  */
 function mapIdsToNames(obj, key) {
@@ -72,6 +72,16 @@ function mapIdsToNames(obj, key) {
   );
 }
 
+/**
+ * Merges new query results with existing results.
+ * If the query data contains 'pages', it performs a deep merge.
+ * Otherwise, it concatenates the new results to the existing ones.
+ *
+ * @param {Object|Array} existingResults - The current set of results to be merged with new data.
+ * @param {Object} data - The new data object containing query results.
+ * @param {Object} data.query - The query object within the new data.
+ * @returns {Object|Array} The merged results, either as a deeply merged object or a concatenated array.
+ */
 function mergeResults(existingResults, data) {
   if ("pages" in data.query) {
     // נניח שפונקציית mergeDeep כבר מוגדרת כדי למזג עמוק שני אובייקטים.
@@ -80,5 +90,6 @@ function mergeResults(existingResults, data) {
     return existingResults.concat(...Object.values(data.query));
   }
 }
+
 
 export { mapIdsToNames, mergeResults };
