@@ -1,0 +1,14 @@
+on: 
+  schedule:
+    - cron: 0 0 * * 0-5
+jobs:
+  lockAspaklaryaPages:
+    env:
+      MC_USER: ${{secrets.MC_USER}}
+      MC_PASSWORD: ${{secrets.MC_PASSWORD}}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: npm install
+      - run: node src/scriptes/lockTInryArticeln.js
+
