@@ -1,14 +1,25 @@
-on: 
+on:
   schedule:
     - cron: 0 0 * * 0-5
 jobs:
   lockAspaklaryaPages:
-    env:
-      MC_USER: ${{secrets.MC_USER}}
-      MC_PASSWORD: ${{secrets.MC_PASSWORD}}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - run: npm install
-      - run: node src/scriptes/lockTInryArticeln.js
-
+      - name: Read last run date
+        run: echo "LAST_RUN=$(cat last_successful_run_lock_pages.txt)" >> $GITHUB_ENV
+      - name: lock and unlock pages
+        run: node src/scriptes/lockTInryArticeln.js
+        env:
+          MC_USER: ${{secrets.MC_USER}}
+          MC_PASSWORD: ${{secrets.MC_PASSWORD}}
+      - name: check run lock
+        if: success()
+        run: | 
+          echo $(date -u +'%Y-%m-%dT%H:%M:%S.000Z') > last_successful_run_lock_pages.txt
+          git config user.name "motiBot"
+          git config user.email ""
+          git add last_successful_run.txt
+          git commit -m "Update last successful run"
+          git push origin main
