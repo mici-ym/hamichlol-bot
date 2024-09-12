@@ -24,7 +24,7 @@ async function removeReplacementImages() {
     const res   = await request.query({ options: queryParams });
     let count = 0;
     for (const page of Object.values(res)) {
-      if (count == 150) break;
+      if (count == 50) break;
       let content = page.revisions[0].slots.main.content;
       const regex = /\{\{תמונה (חילופית|הדורשת החלפה)\|[^:\n]+:([^|\]]+)[^}]+\}\}/g;
       let listFilesOfRemove = [];
