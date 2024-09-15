@@ -8,6 +8,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: npm install
+      - uses: actions/download-artifact@v4
+        with:
+          name: last_successful_run_lock_pages
       - name: Read last run date
         run: echo "LAST_RUN=$(cat last_successful_run_lock_pages.txt)" >> $GITHUB_ENV
       - name: lock and unlock pages
@@ -15,12 +18,11 @@ jobs:
         env:
           MC_USER: ${{secrets.MC_USER}}
           MC_PASSWORD: ${{secrets.MC_PASSWORD}}
-      - name: check run lock
+      - name: Update last run
         if: success()
-        run: | 
+        run: |
           echo $(date -u +'%Y-%m-%dT%H:%M:%S.000Z') > last_successful_run_lock_pages.txt
-          git config user.name "motiBot"
-          git config user.email "m@moti.com"
-          git add last_successful_run_lock_pages.txt
-          git commit -m "Update last successful run"
-          git push origin main
+      - uses: upload-artifact@v4
+        with:
+          name: last_successful_run_lock_pages
+          path: last_successful_run_lock_pages.txt
