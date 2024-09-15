@@ -1,6 +1,7 @@
 on:
   schedule:
     - cron: 0 0 * * 0-5
+  workflow_dispatch:
 jobs:
   lockAspaklaryaPages:
     runs-on: ubuntu-latest
