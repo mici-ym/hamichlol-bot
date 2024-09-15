@@ -1,21 +1,21 @@
 on:
   schedule:
     - cron: 0 0 * * 0-5
-  workflow_dispatch:
+  workflow_dispatch: lockAspaklaryaPages
 jobs:
   lockAspaklaryaPages:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 20.x
-      - run: npm install
       - uses: actions/download-artifact@v4
         with:
           name: last_successful_run_lock_pages
       - name: Read last run date
         run: echo "LAST_RUN=$(cat last_successful_run_lock_pages.txt)" >> $GITHUB_ENV
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20.x
+      - run: npm install
       - name: lock and unlock pages
         run: node src/scriptes/manageLockPage.js
         env:
