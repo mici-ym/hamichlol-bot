@@ -8,10 +8,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v4
+        if: ${{ always() }}
+        continue-on-error: true
         with:
           name: last_successful_run_lock_pages
       - name: Read last run date
-        run: echo "LAST_RUN=$(cat last_successful_run_lock_pages.txt)" >> $GITHUB_ENV
+        run: |
+          if [ -f last_successful_run_lock_pages.txt ]; then
+            echo "LAST_RUN=$(cat last_successful_run_lock_pages.txt)" >> $GITHUB_ENV
+          fi      
       - uses: actions/setup-node@v3
         with:
           node-version: 20.x
