@@ -1,0 +1,161 @@
+$(document).ready(function () {
+	function addButtonView() {
+	  if ($("#p-בדיקת_תוכן").length > 0) {
+		$(mw.util.addPortletLink("p-בדיקת_תוכן", "#", "תיוג בודקי תמונות")).click(
+		  submissionParameters
+		);
+	  } else {
+		$(mw.util.addPortletLink("p-tb", "#", "תיוג בודקי תמונות")).click(
+		  submissionParameters
+		);
+	  }
+	}  
+	function getPageContent() {
+	  const pageName = mw.config.get("wgPageName");
+	  const api = new mw.Api();
+	  return api.get({
+		action: "query",
+		prop: "revisions",
+		rvprop: "content",
+		titles: pageName,
+	  }).then(function (data) {
+		if (data.query && data.query.pages) {
+		  const page = data.query.pages[Object.keys(data.query.pages)[0]];
+		  if (page.revisions && page.revisions.length > 0) {
+			const content = page.revisions[0]["*"];
+			return content;
+		  } else {
+			throw new Error("לא נמצאו תיקונים בדף זה");
+		  }
+		} else {
+		  throw new Error("שגיאה במענה מה-API");
+		}
+	  }).catch(function (error) {
+		console.error("Error fetching page content:", error);
+		throw error;
+	  });
+	}
+  
+	function extractFilesFromContent(content) {
+	  const fileRegex = /(?:File|קובץ|תמונה=|תמונה = ):[\s\S]+?\.(jpg|jpeg|png|gif|svg|tiff|bmp)/gi;
+	  const files = content.match(fileRegex) || [];
+	  return files;
+	}
+  
+	function FileSelectionDialog(config) {
+	  FileSelectionDialog.super.call(this, config);
+	}
+  
+	OO.inheritClass(FileSelectionDialog, OO.ui.ProcessDialog);
+  
+	FileSelectionDialog.static.name = 'fileSelectionDialog';
+	FileSelectionDialog.static.title = 'בחר תמונות לבדיקה';
+	FileSelectionDialog.static.actions = [
+	  { action: 'submit', label: 'שלח', flags: ['primary', 'progressive'] },
+	  { action: 'cancel', label: 'ביטול', flags: 'safe' }
+	];
+  
+	FileSelectionDialog.prototype.initialize = function () {
+	  FileSelectionDialog.super.prototype.initialize.apply(this, arguments);
+	  this.content = new OO.ui.PanelLayout({ padded: true, expanded: false });
+	  this.fieldset = new OO.ui.FieldsetLayout({
+		label: "בחר תמונות לבדיקה",
+	  });
+	  this.content.$element.append(this.fieldset.$element);
+	  this.$body.append(this.content.$element);
+	};
+  
+	FileSelectionDialog.prototype.getActionProcess = function (action) {
+	  if (action === 'submit') {
+		const selectedFiles = this.checkboxes
+		  .filter(item => item.checkbox.isSelected())
+		  .map(item => item.file);
+  
+		if (selectedFiles.length > 0) {
+		  callTheReviewer(selectedFiles);
+		} else {
+		  mw.notify("לא נבחרו תמונות לשליחה", { type: "warn" });
+		}
+		return new OO.ui.Process(function () {
+		  this.close();
+		}, this);
+	  }
+  
+	  return FileSelectionDialog.super.prototype.getActionProcess.call(this, action);
+	};
+  
+	function createFileSelectionDialog(files) {
+	  if (files.length === 0) {
+		mw.notify("לא נמצאו קבצים לבדיקה בדף זה", { type: "warn" });
+		return;
+	  }
+  
+	  const windowManager = new OO.ui.WindowManager();
+	  $(document.body).append(windowManager.$element);
+  
+	  const dialog = new FileSelectionDialog({
+		size: 'medium'
+	  });
+  
+	  windowManager.addWindows([dialog]);
+  
+	  windowManager.openWindow(dialog);
+  
+	  dialog.checkboxes = files.map(file => {
+		const checkbox = new OO.ui.CheckboxInputWidget();
+		const fileLabel = new OO.ui.LabelWidget({
+		  label: new OO.ui.HtmlSnippet(`<img src="/wiki/Special:FilePath/${file}" style="max-width:100px; max-height:100px;"> ${file}`)
+		});
+		dialog.fieldset.addItems([
+		  new OO.ui.FieldLayout(checkbox, {
+			label: fileLabel.$element,
+			align: 'inline'
+		  })
+		]);
+		return { checkbox, file };
+	  });
+	}
+  
+		function submissionParameters() {
+	  if (mw.config.get("wgNamespaceNumber") === 6) {
+		callTheReviewer(["{{בת}}"]);
+	  } else {
+		getPageContent()
+		  .then(content => {
+			const files = extractFilesFromContent(content);
+			if (files.length > 0) {
+			  createFileSelectionDialog(files);
+			} else {
+			  mw.notify("לא נמצאו קבצים לבדיקה בדף זה", { type: "warn" });
+			}
+		  })
+		  .catch((error) => {
+			console.error("שגיאה בשליפת תוכן הדף:", error);
+			mw.notify("שגיאה בשליפת תוכן הדף", { type: "error" });
+		  });
+	  }
+	}
+  
+	function callTheReviewer(selectedFiles) {
+	  if (!selectedFiles || selectedFiles.length === 0) return;
+  
+	  const message = selectedFiles.map(file => `[[${file}|ממוזער|80 פיקסלים|ימין]]`).join("\n");
+	  const api = new mw.Api();
+	  const pageName = mw.config.get("wgPageName").replace(/_/g, " ");
+	  
+	  api.newSection(
+		"המכלול:בדיקת תמונות",
+		`[[${pageName}]]`,
+		`${message}. ~~~~`,
+		{ watchlist: "nochange" }
+	  ).done((data) => {
+		if (data?.edit?.result === "Success") {
+		  mw.notify("הבקשה נשמרה בהצלחה", { type: "success" });
+		} else {
+		  alert("ההודעה לא נשמרה נא לבקש ידנית");
+		}
+	  });
+	}
+  
+	if (mw.config.get("wgNamespaceNumber") % 2 === 0) addButtonView();
+  });
