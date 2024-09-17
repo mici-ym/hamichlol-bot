@@ -9,11 +9,11 @@ async function main() {
     const { parse: jsonList } = await hamichlol.parse({
       pageid: 967200,
     });
-    if (!jsonList.parse) {
+    if (!jsonList) {
       logger.error("not parse");
       throw new Error("not parse");
     }
-    const { titles } = JSON.parse(jsonList);
+    const { titles } = JSON.parse(jsonList.wikitext["*"]);
     logger.info(titles);
     const options = {
       prop: "revisions",
