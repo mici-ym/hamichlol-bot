@@ -37,5 +37,5 @@ jobs:
           path: last_successful_run_lock_pages.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: logs_${{env.ARTIFACT_DAY}}_${{env.GITHUB_WORKFLOW}}
+          name: logs_${{env.ARTIFACT_DAY}}_$GITHUB_WORKFLOW
           path: ./logs

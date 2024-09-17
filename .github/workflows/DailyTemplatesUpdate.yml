@@ -16,5 +16,5 @@ jobs:
       - run: echo "ARTIFACT_DAY=$(date -u +'%a')" >> $GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with:
-          name: logs_${{env.ARTIFACT_DAY}}_${{env.GITHUB_WORKFLOW}}
-          path: logs/
+          name: logs_${{env.ARTIFACT_DAY}}_$GITHUB_WORKFLOW
+          path: ./logs
