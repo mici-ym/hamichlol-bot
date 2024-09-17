@@ -1,0 +1,20 @@
+name: Daily template update
+on:
+  schedule:
+    - cron: 01 */6 * * 0-5
+  workflow_dispatch:
+jobs:
+  bot-update:
+    runs-on: ubuntu-latest
+    env:
+        MC_USER: ${{secrets.MC_USER}}
+        MC_PASSWORD: ${{secrets.MC_PASSWORD}}
+    steps:
+      - uses: actions/checkout@v3
+      - run: npm install
+      - run: node src/scripts/TemplateUpdate.js
+      - run: echo "ARTIFACT_DAY=$(date -u +'%a')" >> $GITHUB_ENV
+      - uses: actions/upload-artifact@v4
+        with:
+          name: logs_${{env.ARTIFACT_DAY}}
+          path: logs/

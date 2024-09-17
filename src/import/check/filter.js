@@ -1,5 +1,4 @@
-// eslint-disable-next-line
-import lists from "./listes.json" with {type: 'json'};
+ import lists from "./listes.json" with {type: 'json'};
 
 /**
  * Checks if words or phrases from the given text are included in any of the lists.

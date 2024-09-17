@@ -6,6 +6,12 @@ export default {
     ecmaVersion: "latest",
     sourceType: "module",
     parser: babelParser,
+    parserOptions: {
+      requireConfigFile: false,
+      babelOptions: {
+        plugins: [babelPluginSyntaxImportAssertions],
+      },
+    },
   },
   ignores: [
     "node_modules/*",
