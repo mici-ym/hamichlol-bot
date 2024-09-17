@@ -16,7 +16,7 @@ jobs:
         run: |
           if [ -f last_successful_run_lock_pages.txt ]; then
             echo "LAST_RUN=$(cat last_successful_run_lock_pages.txt)" >> $GITHUB_ENV
-          fi      
+          fi
       - uses: actions/setup-node@v3
         with:
           node-version: 20.x
@@ -30,7 +30,12 @@ jobs:
         if: success()
         run: |
           echo $(date -u +'%Y-%m-%dT%H:%M:%S.000Z') > last_successful_run_lock_pages.txt
+          echo "ARTIFACT_DAY=$(date -u +'%a')" >> $GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with:
           name: last_successful_run_lock_pages
           path: last_successful_run_lock_pages.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: logs_${{env.ARTIFACT_DAY}}
+          path: ./logs
