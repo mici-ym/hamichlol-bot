@@ -27,6 +27,7 @@ class Client {
     }
     this.wikiUrl = wikiUrl;
     this.isLogedIn = false;
+    this.withLogedIn = true;
   }
   /**
    * Sends a POST request to the MediaWiki API with the provided body parameters.
@@ -74,7 +75,7 @@ class Client {
    * @returns {Promise<object>} - The response from the GET request in JSON format.
    */
   async get(queryString, withCookie = true) {
-    if (!this.isLogedIn && withCookie) {
+    if (!this.isLogedIn && withCookie && this.withLogedIn) {
       await this.login();
     }
     try {

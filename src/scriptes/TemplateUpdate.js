@@ -3,6 +3,7 @@ import logger from "../logger.js";
 
 const hamichlol = getRequestsInstance();
 const wikipedia = getRequestsInstance("wiki");
+wikipedia.withLogedIn = false;
 
 async function main() {
   try {
