@@ -5,4 +5,3 @@
 /src/logging.js
 *.log
 *.env
-pnpm-lock.yaml

@@ -1,17 +1,17 @@
-import babelParser from "@babel/eslint-parser";
-import babelPluginSyntaxImportAssertions from "@babel/plugin-syntax-import-assertions";
+//import babelParser from "@babel/eslint-parser";
+//import babelPluginSyntaxImportAssertions from "@babel/plugin-syntax-import-assertions";
 
 export default {
   languageOptions: {
     ecmaVersion: "latest",
-    sourceType: "module",
+    sourceType: "module",/*
     parser: babelParser,
     parserOptions: {
       requireConfigFile: false,
       babelOptions: {
         plugins: [babelPluginSyntaxImportAssertions],
       },
-    },
+    },*/
   },
   ignores: [
     "node_modules/*",
@@ -19,5 +19,5 @@ export default {
     "**/check-wiki-event",
     "**/import/*",
   ],
-  plugins: { babelPluginSyntaxImportAssertions },
+  //plugins: { babelPluginSyntaxImportAssertions },
 };
