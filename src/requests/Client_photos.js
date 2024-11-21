@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import { extractCookie } from "./utils/cookie.js";
 
 class ClientPhotos {
