@@ -1,3 +1,4 @@
+import fetch from "node-fetch";
 import dotenv from "dotenv";
 dotenv.config();
 import { extractCookie } from "./utils/cookie.js";
@@ -118,13 +119,17 @@ class Client {
     };
     try {
       const { login } = await this.#postWiki(loginParams);
+      console.log(login);
+
       if (!login.result || login.result !== "Success") {
         logger.error(`Error in login: ${login.message}`, login);
         this.isLogedIn = false;
         return false;
       }
       logger.info("logged in successfully");
-      this.token = await this.#getToken("csrf&" + assert);
+      this.token = await this.#getToken("csrf&assert=" + assert);
+      console.log(this.token);
+
       this.isLogedIn = true;
       return true;
     } catch (error) {
@@ -175,6 +180,7 @@ class Client {
         }
       );
       const jsonRes = await res.json();
+
       if (res.headers.raw()["set-cookie"]) {
         this.#cookie = extractCookie(res.headers.raw()["set-cookie"]);
       }
