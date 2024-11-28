@@ -385,6 +385,47 @@ class Client {
     }
     return parsed?.flow ? parsed?.flow["new-topic"]?.status : parsed;
   }
+
+  /**
+   * Performs a rollback operation on a wiki page.
+   *
+   * @async
+   * @param {string} user - The username of the user whose edits are to be rolled back.
+   * @param {Object} options - The options for the rollback operation.
+   * @param {number} [options.pageid] - The ID of the page to rollback.
+   * @param {string} [options.title] - The title of the page to rollback.
+   * @param {string} [options.summary] - A summary of the rollback operation.
+   * @param {boolean} [options.markbot=true] - Whether to mark the edit as bot.
+   * @returns {Promise<Object>} A promise that resolves with the API response for the rollback action.
+   */
+  async rollback(user, { pageid, title, summary, markbot = true }) {
+    try {
+      if (!this.isLogedIn) await this.login();
+      if (!this.token.rollback) {
+        const { rollbacktoken } = await this.#getToken("rollback&assert=bot");
+        if (rollbacktoken) {
+          this.token.rollback = rollbacktoken;
+        } else {
+          logger.error("Unable to obtain rollback token");
+          throw new Error("Unable to obtain rollback token");
+        }
+      }
+      const params = {
+        action: "rollback",
+        user,
+        token: this.token.rollback,
+      };
+
+      if (pageid) params.pageid = pageid;
+      if (title) params.title = title;
+      if (summary) params.summary = summary;
+      if (!markbot) delete params.markbot;
+      return await this.#postWiki(params);
+    } catch (error) {
+      logger.error("rollback filed", error);
+      throw error;
+    }
+  }
 }
 
 export default Client;
