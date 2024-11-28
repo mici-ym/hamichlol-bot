@@ -19,7 +19,6 @@ async function rollback() {
     ucshow: "top",
     ucprop: "ids|title",
   };
-  console.log(paramsRollback);
 
   const {
     query: { usercontribs },
