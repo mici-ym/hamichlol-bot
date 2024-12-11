@@ -24,7 +24,7 @@ jobs:
           node-version: 20.x
       - run: npm install
       - name: lock and unlock pages
-        run: node src/scriptes/manageLockPage.js
+        run: node src/scripts/manageLockPage.js
         env:
           MC_USER: ${{secrets.MC_USER}}
           MC_PASSWORD: ${{secrets.MC_PASSWORD}}
