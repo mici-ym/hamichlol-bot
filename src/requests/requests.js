@@ -55,46 +55,46 @@ export class requests extends Client {
     return useIdsOrTitles === "ids" ? query : mapIdsToNames(query, "title");
   }
 
-/**
- * Queries the wiki API for pages that embed (transclude) a specified page.
- *
- * @async
- * @param {Object} params - The parameters for the query.
- * @param {number} [params.pageid] - The ID of the page to find embeddings for. Mutually exclusive with 'title'.
- * @param {string} [params.title] - The title of the page to find embeddings for. Mutually exclusive with 'pageid'.
- * @param {boolean} [params.withCookie=true] - Whether to include cookies in the request.
- * @param {boolean} [params.getContinue=true] - Whether to automatically fetch all results using continuation.
- * @param {Object} [params.options={}] - Additional query parameters to be included in the request.
- * @throws {Error} Throws an error if both pageid and title are provided.
- * @returns {Promise<Object>} A promise that resolves to the query results containing pages that embed the specified page.
- */
-async embeddedin({
-  pageid,
-  title,
-  withCookie = true,
-  getContinue = true,
-  options = {},
-}) {
-  const queryParams = {
-    action: "query",
-    format: "json",
-    list: "embeddedin",
-    einamespace: 0,
-    eilimit: "max",
-  };
-  if (pageid && title) {
-    logger.error("you must provide either pageid or title");
-    throw new Error("you must provide either pageid or title");
+  /**
+   * Queries the wiki API for pages that embed (transclude) a specified page.
+   *
+   * @async
+   * @param {Object} params - The parameters for the query.
+   * @param {number} [params.pageid] - The ID of the page to find embeddings for. Mutually exclusive with 'title'.
+   * @param {string} [params.title] - The title of the page to find embeddings for. Mutually exclusive with 'pageid'.
+   * @param {boolean} [params.withCookie=true] - Whether to include cookies in the request.
+   * @param {boolean} [params.getContinue=true] - Whether to automatically fetch all results using continuation.
+   * @param {Object} [params.options={}] - Additional query parameters to be included in the request.
+   * @throws {Error} Throws an error if both pageid and title are provided.
+   * @returns {Promise<Object>} A promise that resolves to the query results containing pages that embed the specified page.
+   */
+  async embeddedin({
+    pageid,
+    title,
+    withCookie = true,
+    getContinue = true,
+    options = {},
+  }) {
+    const queryParams = {
+      action: "query",
+      format: "json",
+      list: "embeddedin",
+      einamespace: 0,
+      eilimit: "max",
+    };
+    if (pageid && title) {
+      logger.error("you must provide either pageid or title");
+      throw new Error("you must provide either pageid or title");
+    }
+    if (pageid) {
+      queryParams.einpageid = pageid;
+    }
+    if (title) {
+      queryParams.eititle = title;
+    }
+    Object.assign(queryParams, options);
+    return await this.query({ options: queryParams, withCookie, getContinue });
   }
-  if (pageid) {
-    queryParams.einpageid = pageid;
-  }
-  if (title) {
-    queryParams.eititle = title;
-  }
-  Object.assign(queryParams, options);
-  return await this.query({ options: queryParams, withCookie, getContinue });
-}
 
   /**
    * Queries the wiki API for the members of a specific category.
@@ -189,32 +189,32 @@ async embeddedin({
    * @param {Object} params.options - Additional options for the query request.
    * @returns {Promise<Object>} A promise that resolves to the query result in JSON format.
    */
-/**
- * Performs a query to the wiki API using specified parameters.
- * 
- * @async
- * @param {Object} params - The parameters for the query.
- * @param {Object} [params.options={}] - Additional options to be included in the query parameters.
- * @param {boolean} [params.withCookie=true] - Whether to include cookies in the request.
- * @param {boolean} [params.getContinue=true] - Whether to automatically fetch all results using continuation.
- * @returns {Promise<Object>} A promise that resolves to the query result. If getContinue is true, it includes all paginated results.
- */
-async query({ options = {}, withCookie = true, getContinue = true }) {
-  const queryParams = {
-    action: "query",
-    format: "json",
-    utf8: 1,
-    ...options,
-  };
-  const queryString = new URLSearchParams(queryParams);
+  /**
+   * Performs a query to the wiki API using specified parameters.
+   *
+   * @async
+   * @param {Object} params - The parameters for the query.
+   * @param {Object} [params.options={}] - Additional options to be included in the query parameters.
+   * @param {boolean} [params.withCookie=true] - Whether to include cookies in the request.
+   * @param {boolean} [params.getContinue=true] - Whether to automatically fetch all results using continuation.
+   * @returns {Promise<Object>} A promise that resolves to the query result. If getContinue is true, it includes all paginated results.
+   */
+  async query({ options = {}, withCookie = true, getContinue = true }) {
+    const queryParams = {
+      action: "query",
+      format: "json",
+      utf8: 1,
+      ...options,
+    };
+    const queryString = new URLSearchParams(queryParams);
 
-  const res = await super.get(queryString, withCookie);
-  if (!getContinue) {
-    return res;
-  } else {
-    return await this.getWithContinue(queryString, withCookie, res);
+    const res = await super.get(queryString, withCookie);
+    if (!getContinue) {
+      return res;
+    } else {
+      return await this.getWithContinue(queryString, withCookie, res);
+    }
   }
-}
 
   /**
    * Handles the continuation of a query in the wiki API.
@@ -280,12 +280,13 @@ let instance = new Map();
  * @returns {requests} An instance of the `Requests` class.
  */
 export function getRequestsInstance(nameInstance = "hamichlol", wikiUrl) {
-  wikiUrl =
-    nameInstance === "hamichlol"
-      ? "https://www.hamichlol.org.il/w/api.php"
-      : !wikiUrl || process.platform === "win32"
-      ? "https://www.hamichlol.org.il/import/get_wik1i.php"
-      : "https://he.wikipedia.org/api.php";
+  wikiUrl = wikiUrl
+    ? wikiUrl
+    : nameInstance === "hamichlol"
+    ? "https://www.hamichlol.org.il/w/api.php"
+    : process.platform === "win32"
+    ? "https://www.hamichlol.org.il/import/get_wik1i.php"
+    : "https://he.wikipedia.org/api.php";
   if (!instance[nameInstance]) {
     logger.info("creating instance: " + nameInstance);
     instance[nameInstance] = new requests(wikiUrl);

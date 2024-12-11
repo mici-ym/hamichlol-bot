@@ -2,7 +2,10 @@ import { getRequestsInstance } from "../requests/requests.js";
 import logger from "../logger.js";
 
 const hamichlol = getRequestsInstance();
-const wikipedia = getRequestsInstance("wiki");
+const wikipedia = getRequestsInstance(
+  "wiki",
+  "https://import.hamichlol.org.il/"
+);
 wikipedia.withLogedIn = false;
 
 async function main() {
@@ -41,18 +44,19 @@ async function main() {
         new Date(dataTitles[title].revisions[0].timestamp) <
         new Date(page.revisions[0].timestamp)
       ) {
-        hamichlol
+        await hamichlol
           .edit({
             title,
-            text: page.revisions[0].soltes.main.content,
+            text: page.revisions[0].slots.main["*"],
             summary: `עדכון מוויקיפדיה גרסה ${page.revisions[0].revid}`,
           })
-          .then(({ edit: data }) => {
+          .then(async ({ edit: data }) => {
             logger.info(`edited page: ${title}`, data);
-            proge(title).then(() => logger.info(`purged page: ${title}`));
+            await proge(title).then(() => logger.info(`purged page: ${title}`));
           });
       }
     }
+    hamichlol.logout();
   } catch (error) {
     logger.error(error);
   }
