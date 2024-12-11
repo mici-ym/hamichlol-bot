@@ -20,11 +20,15 @@ async function cat(gcmstart) {
     let count = 0;
     for (const page in query) {
       if (query[page].allevel === "edit-semi") continue;
-      const { aspaklaryalockdown: data } = await request.lockPage({
+      const { aspaklaryalockdown: data, error } = await request.lockPage({
         title: query[page].title,
         level: "edit-semi",
         reason: "ערך מילוני",
       });
+      if (error) {
+        logger.error(`Error locking page ${query[page].title}:`, error);
+        continue;
+      }
       logger.info(`Page ${data.title} is locked`, data);
       count++;
     }
@@ -85,7 +89,9 @@ async function rc(rcstart) {
 }
 
 async function main() {
-  const start = process.env.LAST_RUN || new Date(new Date().getTime() - 1000 * 60 * 60 * 24 * 7).toISOString(); // 7 days ago
+  const start =
+    process.env.LAST_RUN ||
+    new Date(new Date().getTime() - 1000 * 60 * 60 * 24 * 7).toISOString(); // 7 days ago
   await cat(start);
   await rc(start);
   request.logout();
