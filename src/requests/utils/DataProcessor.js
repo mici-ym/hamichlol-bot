@@ -10,47 +10,33 @@
  * @returns {Object} - The merged object.
  */
 function mergeDeep(obj1, obj2) {
-  const merged = {};
   if (Array.isArray(obj2)) {
     obj2 = mapIdsToNames(obj2, "pageid");
   }
-  // Loop through each key in obj1
-  for (const key in obj1) {
-    // Check if the key exists in obj2
-    if (obj2.hasOwnProperty(key)) {
-      // If both values are arrays, merge them
-      if (
-        Array.isArray(obj1[key]) &&
-        obj1[key] !== null &&
-        Array.isArray(obj2[key]) &&
-        obj2[key] !== null
-      ) {
-        merged[key] = [...obj1[key], ...obj2[key]];
-      }
-      // If both values are objects, merge them recursively
-      else if (
-        typeof obj1[key] === "object" &&
-        obj1[key] !== null &&
-        typeof obj2[key] === "object" &&
-        obj2[key] !== null
-      ) {
-        merged[key] = mergeDeep(obj1[key], obj2[key]);
-      }
-      // If the values are not objects or arrays, keep the value from obj1
-      else {
-        merged[key] = obj1[key];
-      }
-    }
-    // If the key does not exist in obj2, keep the value from obj1
-    else {
-      merged[key] = obj1[key];
-    }
-  }
 
-  // Loop through each key in obj2 that is not already handled
-  for (const key in obj2) {
-    if (obj2.hasOwnProperty(key) && !merged.hasOwnProperty(key)) {
-      merged[key] = obj2[key];
+  const merged = {};
+
+  const keys = new Set([...Object.keys(obj1), ...Object.keys(obj2)]);
+
+  for (const key of keys) {
+    const val1 = obj1[key];
+    const val2 = obj2[key];
+
+    if (val1 !== undefined && val2 !== undefined) {
+      if (Array.isArray(val1) && Array.isArray(val2)) {
+        merged[key] = [...val1, ...val2];
+      } else if (
+        typeof val1 === "object" && val1 !== null &&
+        typeof val2 === "object" && val2 !== null
+      ) {
+        merged[key] = mergeDeep(val1, val2);
+      } else {
+        merged[key] = val1; // או val2 בהתאם לדרישות
+      }
+    } else if (val1 !== undefined) {
+      merged[key] = val1;
+    } else {
+      merged[key] = val2;
     }
   }
 
@@ -74,20 +60,45 @@ function mapIdsToNames(obj, key) {
 
 /**
  * Merges new query results with existing results.
- * If the query data contains 'pages', it performs a deep merge.
- * Otherwise, it concatenates the new results to the existing ones.
+ * Handles different structures of API responses including 'pages', 'querypage', and other formats.
  *
  * @param {Object|Array} existingResults - The current set of results to be merged with new data.
  * @param {Object} data - The new data object containing query results.
  * @param {Object} data.query - The query object within the new data.
- * @returns {Object|Array} The merged results, either as a deeply merged object or a concatenated array.
+ * @returns {Object|Array} The merged results.
  */
 function mergeResults(existingResults, data) {
+  if (!data.query) {
+    return existingResults; // אם אין נתונים חדשים, החזר את התוצאות הקיימות
+  }
+
   if ("pages" in data.query) {
-    // נניח שפונקציית mergeDeep כבר מוגדרת כדי למזג עמוק שני אובייקטים.
+    // מיזוג עמוק עבור תוצאות מסוג 'pages'
     return mergeDeep(existingResults, data.query.pages);
+  } else if ("querypage" in data.query && Array.isArray(data.query.querypage.results)) {
+    // טיפול במבנה החדש עם 'querypage'
+    const newResults = data.query.querypage.results;
+    if (Array.isArray(existingResults)) {
+      // אם התוצאות הקיימות הן מערך, הוסף את התוצאות החדשות
+      return [...existingResults, ...newResults];
+    } else if (typeof existingResults === 'object' && existingResults !== null) {
+      // אם התוצאות הקיימות הן אובייקט, בצע מיזוג עמוק
+      return mergeDeep(existingResults, { results: newResults });
+    } else {
+      // אם אין תוצאות קיימות או שהן מסוג לא צפוי, החזר את התוצאות החדשות
+      return newResults;
+    }
   } else {
-    return existingResults.concat(...Object.values(data.query));
+    // טיפול במקרים אחרים
+    if (Array.isArray(existingResults)) {
+      return existingResults.concat(...Object.values(data.query));
+    } else if (typeof existingResults === 'object' && existingResults !== null) {
+      // ביצוע מיזוג עמוק אם שני הערכים הם אובייקטים
+      return mergeDeep(existingResults, data.query);
+    } else {
+      // אם אין תוצאות קיימות או שהן מסוג לא צפוי, החזר את התוצאות החדשות
+      return data.query;
+    }
   }
 }
 
