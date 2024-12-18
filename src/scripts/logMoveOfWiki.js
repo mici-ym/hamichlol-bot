@@ -57,8 +57,7 @@ function createArr(list) {
   return arr;
 }
 
-async function createTable(arr, target, max) {
-  const titles = createArr(arr);
+async function createTable(titles, target, max) {
   let arrData = {};
   do {
     if (titles.length < max) {
@@ -93,18 +92,13 @@ async function processor(list, ns) {
     14: "קטגוריות",
   };
   const logList = processorLog(list);
-  const dataForPagesLocal = await createTable(
-    logList.flatMap((obj) => [obj.from, obj.to]),
-    "loc",
-    30
-  );
-  const dataForPagesWiki = await createTable(
-    logList.map((obj) => {
-      return obj.from;
-    }),
-    "wiki",
-    30
-  );
+  const titlesList = new Set();
+  for (const item of logList) {
+    titlesList.add(item.from);
+    titlesList.add(item.to);
+  }
+  const dataForPagesLocal = await createTable(titlesList, "loc", 30);
+  const dataForPagesWiki = await createTable(titlesList, "wiki", 30);
   for (const item of logList) {
     if (
       (cackDataPage(dataForPagesLocal[item.from]) ===
@@ -119,13 +113,10 @@ async function processor(list, ns) {
     ) {
       continue;
     } else {
-      stringData += `* [[${item.from}]] <small>(מ: ${
-        objOfHe[cackDataPage(dataForPagesLocal[item.from])]
-      }, w: ${
-        objOfHe[cackDataPage(dataForPagesWiki[item.from])]
-      })</small> => [[${item.to}]] <small>(${
-        objOfHe[cackDataPage(dataForPagesLocal[item.to])]
-      })</small>\n`;
+      stringData += `* [[${item.from}]] <small>(מ: ${objOfHe[cackDataPage(dataForPagesLocal[item.from])]
+        }, w: ${objOfHe[cackDataPage(dataForPagesWiki[item.from])]
+        })</small> => [[${item.to}]] <small>(${objOfHe[cackDataPage(dataForPagesLocal[item.to])]
+        })</small>\n`;
     }
   }
   request
