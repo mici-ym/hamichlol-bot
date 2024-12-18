@@ -8,7 +8,7 @@ import logger from "../logger.js";
  * @param {string} urlGet - The URL of the wiki.
  * @throws {Error} Throws an error if the URL of the wiki is not provided.
  */
-export class requests extends Client {
+export class Requests extends Client {
   wikiUrl = "";
   constructor(wikiUrl) {
     if (!wikiUrl) {
@@ -42,11 +42,12 @@ export class requests extends Client {
       action: "query",
       format: "json",
       prop: "info",
+      ...options
     };
-    if (titles)
+    if (titles) {
       queryParams.titles =
-        typeof titles === "string" ? titles : titles.join("|");
-    Object.assign(queryParams, options);
+        typeof titles === "string" ? titles : titles.join("|")
+    };
     const query = await this.query({
       options: queryParams,
       withCookie,
@@ -81,18 +82,22 @@ export class requests extends Client {
       list: "embeddedin",
       einamespace: 0,
       eilimit: "max",
+      ...options
     };
     if (pageid && title) {
-      logger.error("you must provide either pageid or title");
-      throw new Error("you must provide either pageid or title");
+      const errorMsg = "you must provide either pageid or title";
+      logger.error(errorMsg);
+      throw new Error(errorMsg);
     }
     if (pageid) {
       queryParams.einpageid = pageid;
-    }
-    if (title) {
+    } else if (title) {
       queryParams.eititle = title;
+    } else {
+      const errorMessage = "you must provide either pageid or title";
+      logger.error(errorMessage);
+      throw new Error(errorMessage);
     }
-    Object.assign(queryParams, options);
     return await this.query({ options: queryParams, withCookie, getContinue });
   }
 
@@ -120,19 +125,17 @@ export class requests extends Client {
       list: "categorymembers",
       cmnamespace: 0,
       cmlimit: "max",
+      ...options
     };
     if ((categoryId || options.categoryId) && categoryName) {
-      logger.error("you must provide either categoryId or categoryName");
-      throw new Error("you must provide either categoryId or categoryName");
+      const errorMessage = "you must provide either categoryId or categoryName";
+      logger.error(errorMessage);
+      throw new Error(errorMessage);
     }
-    if (categoryId || options.categoryId) {
-      queryParams.cmpageid = categoryId || options.categoryId;
-    }
-    if (categoryName) {
+    if (categoryId) {
+      queryParams.cmpageid = categoryId;
+    } else {
       queryParams.cmtitle = `קטגוריה:${categoryName}`;
-    }
-    if (options.cmnamespace) {
-      queryParams.cmnamespace = options.cmnamespace;
     }
     if (options.cmtype) {
       delete queryParams.cmnamespace;
@@ -140,7 +143,6 @@ export class requests extends Client {
       delete options.cmtype;
     }
 
-    Object.assign(queryParams, options);
     return await this.query({
       options: queryParams,
       withCookie,
@@ -171,24 +173,19 @@ export class requests extends Client {
     }
     if (page) {
       parseParams.page = page;
-    }
-    if (pageid) {
+    } else if (pageid) {
       parseParams.pageid = pageid;
+    } else {
+      const errorMessage = "you must pass either page or pageid";
+      logger.error(errorMessage);
+      throw new Error(errorMessage);
     }
     if (section || section === 0) {
       parseParams.section = section;
     }
-    Object.assign(parseParams, options);
     return await super.get(new URLSearchParams(parseParams), false);
   }
 
-  /**
-   * Queries the wiki API by making a GET request with the specified parameters.
-   * @async
-   * @param {Object} params - The parameters for querying the wiki API.
-   * @param {Object} params.options - Additional options for the query request.
-   * @returns {Promise<Object>} A promise that resolves to the query result in JSON format.
-   */
   /**
    * Performs a query to the wiki API using specified parameters.
    *
@@ -227,12 +224,14 @@ export class requests extends Client {
    */
   async getWithContinue(queryString, withCookie, data) {
     if (!data || !data.query) {
-      logger.error("the data is not valid");
-      throw new Error("the data is not valid");
+      const errorMessage = "data or query is not valid";
+      logger.error(errorMessage);
+      throw new Error(errorMessage);
     }
     if (!queryString) {
-      logger.error("the query string is not valid");
-      throw new Error("the query string is not valid");
+      const errorMessage = "the query string in getWithContinue is not valid";
+      logger.error(errorMessage);
+      throw new Error(errorMessage);
     }
     let contin = data.continue;
 
@@ -240,8 +239,9 @@ export class requests extends Client {
 
     try {
       while (contin) {
+        const continueParams = new URLSearchParams(contin);
         const res = await super.get(
-          `${queryString}&${this.#objectToQueryString(contin)}`,
+          `${queryString}&${continueParams.toString()}`,
           withCookie
         );
         results = mergeResults(results, res);
@@ -250,7 +250,7 @@ export class requests extends Client {
       return results;
     } catch (error) {
       logger.error(error);
-      console.error(error);
+      //console.error(error);
       //throw new Error(error);
     }
   }
@@ -259,17 +259,14 @@ export class requests extends Client {
    * Converts an object into a query string format.
    * @param {Object} obj - The object to be converted into a query string.
    * @returns {string} - The query string representation of the input object.
-   */
   #objectToQueryString(obj) {
     return Object.entries(obj)
-      .map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
-      .join("&");
+    .map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
+    .join("&");
   }
+  */
 }
 
-/**
- * @type {{[key: string]: requests}}
- */
 let instance = new Map();
 
 /**
@@ -277,19 +274,19 @@ let instance = new Map();
  *
  * @param {string} [nameInstance="hamichlol"] - The name of the instance.
  * @param {string} wikiUrl - The URL to use for the requests.
- * @returns {requests} An instance of the `Requests` class.
+ * @returns {Requests} An instance of the `Requests` class.
  */
 export function getRequestsInstance(nameInstance = "hamichlol", wikiUrl) {
   wikiUrl = wikiUrl
     ? wikiUrl
     : nameInstance === "hamichlol"
-    ? "https://www.hamichlol.org.il/w/api.php"
-    : process.platform === "win32"
-    ? "https://www.hamichlol.org.il/import/get_wik1i.php"
-    : "https://he.wikipedia.org/api.php";
-  if (!instance[nameInstance]) {
+      ? "https://www.hamichlol.org.il/w/api.php"
+      : process.platform === "win32"
+        ? "https://www.hamichlol.org.il/import/get_wik1i.php"
+        : "https://he.wikipedia.org/api.php";
+  if (!instance.has(nameInstance)) {
     logger.info("creating instance: " + nameInstance);
-    instance[nameInstance] = new requests(wikiUrl);
+    instance.set(nameInstance, new Requests(wikiUrl));
   }
-  return instance[nameInstance];
+  return instance.get(nameInstance);
 }

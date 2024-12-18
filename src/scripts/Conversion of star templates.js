@@ -1,4 +1,4 @@
-import { requests } from "../requests/requests.js";
+import { Requests } from "../requests/requests.js";
 import {
   findTemplate,
   getTemplateKeyValueData,
@@ -6,7 +6,7 @@ import {
 } from "../wiki/newTemplateParser.js";
 import logger from "../logger.js";
 
-const req = new requests("https://www.hamichlol.org.il/w/api.php");
+const req = new Requests("https://www.hamichlol.org.il/w/api.php");
 const templateName = "אסטרואיד";
 
 async function main() {

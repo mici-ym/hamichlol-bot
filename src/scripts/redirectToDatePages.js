@@ -1,7 +1,7 @@
-import { requests } from "../requests/requests.js";
+import { Requests } from "../requests/requests.js";
 
-const request = new requests("https://www.hamichlol.org.il/w/api.php");
-const wikiApi = new requests("https://he.wikipedia.org/w/api.php");
+const request = new Requests("https://www.hamichlol.org.il/w/api.php");
+const wikiApi = new Requests("https://he.wikipedia.org/w/api.php");
 
 async function redirectToDatePages() {
   const queryParams = {

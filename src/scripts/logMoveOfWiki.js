@@ -1,8 +1,8 @@
-import { requests } from "../requests/requests.js";
+import { Requests } from "../requests/requests.js";
 
-const wikiRequest = new requests("https://he.wikipedia.org/w/api.php");
+const wikiRequest = new Requests("https://he.wikipedia.org/w/api.php");
 wikiRequest.withLogedIn = false;
-const request = new requests("https://www.hamichlol.org.il/w/api.php");
+const request = new Requests("https://www.hamichlol.org.il/w/api.php");
 
 /**
  * The `main` function asynchronously fetches log events from a wiki API and processes them.

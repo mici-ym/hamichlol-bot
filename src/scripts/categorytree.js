@@ -1,7 +1,7 @@
-import { requests } from "../requests/requests.js";
+import { Requests } from "../requests/requests.js";
 import fs from "fs";
 
-class CategoryTree extends requests {
+class CategoryTree extends Requests {
   constructor(wikiUrl) {
     super(wikiUrl);
   }
