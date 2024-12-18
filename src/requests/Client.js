@@ -148,7 +148,6 @@ class WikiClient {
     };
     try {
       const { login } = await this.wikiPost(loginParams);
-      console.log(login);
 
       if (!login.result || login.result !== "Success") {
         logger.error(`Error in login: ${login.message}`, login);
@@ -157,7 +156,6 @@ class WikiClient {
       }
       logger.info("logged in successfully");
       this.token = await this.#getToken("csrf&assert=" + assert);
-      console.log(this.token);
 
       this.isLogedIn = true;
       return true;
