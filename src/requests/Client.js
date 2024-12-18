@@ -17,6 +17,7 @@ class WikiClient {
   userName = process.env.MC_USER || "";
   #password = process.env.MC_PASSWORD || "";
   token = "";
+  isLoggedIn = false;
 
   /**
    *
@@ -27,13 +28,8 @@ class WikiClient {
       throw new Error("you didn't pass the url of your wiki");
     }
     this.wikiUrl = wikiUrl;
-    this.isLogedIn = false;
+    this.isLoggedIn = false;
     this.withLogedIn = withLogedIn;
-    try {
-      
-    } catch  {
-      
-    }
   }
 
   /**
@@ -117,7 +113,7 @@ class WikiClient {
    * @returns {Promise<object>} - The response from the GET request in JSON format.
    */
   async wikiGet(queryParams) {
-    if (!this.isLogedIn && this.withLogedIn) {
+    if (!this.isLoggedIn && this.withLogedIn) {
       await this.login();
     }
     return await this.#request("GET", queryParams);
@@ -151,13 +147,13 @@ class WikiClient {
 
       if (!login.result || login.result !== "Success") {
         logger.error(`Error in login: ${login.message}`, login);
-        this.isLogedIn = false;
+        this.isLoggedIn = false;
         return false;
       }
       logger.info("logged in successfully");
       this.token = await this.#getToken("csrf&assert=" + assert);
 
-      this.isLogedIn = true;
+      this.isLoggedIn = true;
       return true;
     } catch (error) {
       throw new Error(error);
@@ -256,7 +252,7 @@ class WikiClient {
       );
     }
 
-    if (!this.isLogedIn) {
+    if (!this.isLoggedIn) {
       await this.login();
     }
 
@@ -293,7 +289,7 @@ class WikiClient {
    * @param {String} [reason]
    */
   async delete(title, pageid, reason) {
-    if (!this.isLogedIn) await this.login();
+    if (!this.isLoggedIn) await this.login();
     const deleteParams = {
       action: "delete",
       title,
@@ -323,7 +319,7 @@ class WikiClient {
     reason,
     { movetalk = 1, movesubpages = 1, noredirect = 0 }
   ) {
-    if (!this.isLogedIn) await this.login();
+    if (!this.isLoggedIn) await this.login();
     const moveParams = {
       action: "move",
       from,
@@ -354,7 +350,7 @@ class WikiClient {
    * @returns {Promise<Object>} A promise that resolves with the API response object for the lock action.
    */
   async lockPage({ title, pageid, level, reason }) {
-    if (!this.isLogedIn) await this.login();
+    if (!this.isLoggedIn) await this.login();
     if (!level) throw new Error("You must provide a lock level");
     const lockParams = {
       action: "aspaklaryalockdown",
@@ -427,7 +423,7 @@ class WikiClient {
    */
   async rollback(user, { pageid, title, summary, markbot = true }) {
     try {
-      if (!this.isLogedIn) await this.login();
+      if (!this.isLoggedIn) await this.login();
       if (!this.token.rollback) {
         const { rollbacktoken } = await this.#getToken("rollback&assert=bot");
         if (rollbacktoken) {
