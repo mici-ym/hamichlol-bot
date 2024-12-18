@@ -6,7 +6,7 @@ async function testMaxStringLength() {
 
   let testString = "a".repeat(50);
   let maxLength = 0;
-  const increment = 80; // מספר התווים שיש להוסיף בכל צעד
+  const increment = 8198; // מספר התווים שיש להוסיף בכל צעד
 
   while (true) {
     testString += "a".repeat(increment);
