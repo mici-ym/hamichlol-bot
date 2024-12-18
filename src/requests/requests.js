@@ -1,4 +1,4 @@
-import Client from "./Client.js";
+import WikiClient from "./Client.js";
 import { mapIdsToNames, mergeResults } from "./utils/DataProcessor.js";
 import logger from "../logger.js";
 
@@ -8,7 +8,7 @@ import logger from "../logger.js";
  * @param {string} urlGet - The URL of the wiki.
  * @throws {Error} Throws an error if the URL of the wiki is not provided.
  */
-export class Requests extends Client {
+export class Requests extends WikiClient {
   wikiUrl = "";
   constructor(wikiUrl) {
     if (!wikiUrl) {
@@ -26,7 +26,6 @@ export class Requests extends Client {
    * @param {Object} params - The parameters for the query.
    * @param {string|string[]} [params.titles] - The titles of the pages to query. Can be a single title or an array of titles.
    * @param {string} [params.useIdsOrTitles="ids"] - Determines whether to return results using page IDs or titles. Can be "ids" or "titles".
-   * @param {boolean} [params.withCookie=true] - Whether to include cookies in the request.
    * @param {boolean} [params.getContinue=true] - Whether to automatically fetch all results using continuation.
    * @param {Object} [params.options={}] - Additional query parameters to be included in the request.
    * @returns {Promise<Object>} A promise that resolves to the query results. If useIdsOrTitles is "ids", it returns the raw query result. If "titles", it returns the result mapped from IDs to titles.
@@ -34,7 +33,6 @@ export class Requests extends Client {
   async queryPages({
     titles,
     useIdsOrTitles = "ids",
-    withCookie = true,
     getContinue = true,
     options = {},
   }) {
@@ -50,7 +48,6 @@ export class Requests extends Client {
     };
     const query = await this.query({
       options: queryParams,
-      withCookie,
       getContinue,
     });
     return useIdsOrTitles === "ids" ? query : mapIdsToNames(query, "title");
@@ -63,7 +60,6 @@ export class Requests extends Client {
    * @param {Object} params - The parameters for the query.
    * @param {number} [params.pageid] - The ID of the page to find embeddings for. Mutually exclusive with 'title'.
    * @param {string} [params.title] - The title of the page to find embeddings for. Mutually exclusive with 'pageid'.
-   * @param {boolean} [params.withCookie=true] - Whether to include cookies in the request.
    * @param {boolean} [params.getContinue=true] - Whether to automatically fetch all results using continuation.
    * @param {Object} [params.options={}] - Additional query parameters to be included in the request.
    * @throws {Error} Throws an error if both pageid and title are provided.
@@ -72,7 +68,6 @@ export class Requests extends Client {
   async embeddedin({
     pageid,
     title,
-    withCookie = true,
     getContinue = true,
     options = {},
   }) {
@@ -98,7 +93,7 @@ export class Requests extends Client {
       logger.error(errorMessage);
       throw new Error(errorMessage);
     }
-    return await this.query({ options: queryParams, withCookie, getContinue });
+    return await this.query({ options: queryParams, getContinue });
   }
 
   /**
@@ -107,7 +102,6 @@ export class Requests extends Client {
    * @param {Object} options - The options for the query request.
    * @param {string} options.categoryName - The name of the category whose members are to be queried.
    * @param {number} [options.categoryId] - The ID of the category whose members are to
-   * @param {boolean} [options.withCookie=true] - A flag indicating whether to use a cookie for the request.
    * @param {boolean} [options.getContinue=true] - A flag indicating whether to retrieve all results using continuation.
    * @param {Object} [options.options={}] - Additional options for the query request.
    * @returns {Promise<Object>} - A promise that resolves to the query result in JSON format.
@@ -115,7 +109,6 @@ export class Requests extends Client {
   async categoryMembers({
     categoryName,
     categoryId,
-    withCookie = true,
     getContinue = true,
     options = {},
   }) {
@@ -145,7 +138,6 @@ export class Requests extends Client {
 
     return await this.query({
       options: queryParams,
-      withCookie,
       getContinue,
     });
   }
@@ -166,6 +158,9 @@ export class Requests extends Client {
       format: "json",
       utf8: 1,
       prop: prop || "wikitext",
+      disableppupdate: 1,
+      disableeditsection: 1,
+     ...options,
     };
     if (page && pageid) {
       logger.error("you can't pass both page and pageid");
@@ -183,7 +178,7 @@ export class Requests extends Client {
     if (section || section === 0) {
       parseParams.section = section;
     }
-    return await super.get(new URLSearchParams(parseParams), false);
+    return await super.wikiGet(parseParams);
   }
 
   /**
@@ -192,44 +187,41 @@ export class Requests extends Client {
    * @async
    * @param {Object} params - The parameters for the query.
    * @param {Object} [params.options={}] - Additional options to be included in the query parameters.
-   * @param {boolean} [params.withCookie=true] - Whether to include cookies in the request.
    * @param {boolean} [params.getContinue=true] - Whether to automatically fetch all results using continuation.
    * @returns {Promise<Object>} A promise that resolves to the query result. If getContinue is true, it includes all paginated results.
    */
-  async query({ options = {}, withCookie = true, getContinue = true }) {
+  async query({ options = {}, getContinue = true }) {
     const queryParams = {
       action: "query",
       format: "json",
       utf8: 1,
       ...options,
     };
-    const queryString = new URLSearchParams(queryParams);
 
-    const res = await super.get(queryString, withCookie);
+    const res = await super.wikiGet(queryParams);
     if (!getContinue) {
       return res;
     } else {
-      return await this.getWithContinue(queryString, withCookie, res);
+      return await this.getWithContinue(queryParams, res);
     }
   }
 
   /**
    * Handles the continuation of a query in the wiki API.
    * @async
-   * @param {string} queryString - The query string for the GET request.
-   * @param {boolean} withCookie - A flag indicating whether to use a cookie for the request.
+   * @param {object} queryParams - The query string for the GET request.
    * @param {object} data - The data from the previous query results.
    * @returns {Promise} - The result of the final query.
    * @throws {Error} - If an error occurs during the process.
    */
-  async getWithContinue(queryString, withCookie, data) {
+  async getWithContinue(queryParams, data) {
     if (!data || !data.query) {
       const errorMessage = "data or query is not valid";
       logger.error(errorMessage);
       throw new Error(errorMessage);
     }
-    if (!queryString) {
-      const errorMessage = "the query string in getWithContinue is not valid";
+    if (!queryParams) {
+      const errorMessage = "the query params in getWithContinue is not valid";
       logger.error(errorMessage);
       throw new Error(errorMessage);
     }
@@ -239,11 +231,8 @@ export class Requests extends Client {
 
     try {
       while (contin) {
-        const continueParams = new URLSearchParams(contin);
-        const res = await super.get(
-          `${queryString}&${continueParams.toString()}`,
-          withCookie
-        );
+        Object.assign(queryParams, contin);
+        const res = await super.wikiGet(queryParams);
         results = mergeResults(results, res);
         contin = res.continue;
       }

@@ -11,7 +11,7 @@ import logger from "../logger.js";
  * instruction see in {@link https://www.mediawiki.org/wiki/Manual:Bot_passwords}
  * @class Client
  */
-class Client {
+class WikiClient {
   wikiUrl;
   #cookie = "";
   userName = process.env.MC_USER || "";
@@ -22,76 +22,105 @@ class Client {
    *
    * @param {String} wikiUrl
    */
-  constructor(wikiUrl) {
+  constructor(wikiUrl, withLogedIn = true) {
     if (!wikiUrl) {
       throw new Error("you didn't pass the url of your wiki");
     }
     this.wikiUrl = wikiUrl;
     this.isLogedIn = false;
-    this.withLogedIn = true;
-  }
-  /**
-   * Sends a POST request to the MediaWiki API with the provided body parameters.
-   * This private method handles authentication, error logging, and cookie management.
-   *
-   * @private
-   * @async
-   * @param {Object} body - An object containing the parameters to be sent in the request body.
-   * @param {string} [body.action] - The action to be performed. If 'login', updates the cookie.
-   * @returns {Promise<Object>} The JSON response from the MediaWiki API.
-   * @throws {Error} Throws an error if the HTTP response is not ok or if there's any other error during the process.
-   */
-  async #postWiki(body) {
+    this.withLogedIn = withLogedIn;
     try {
-      const response = await fetch(this.wikiUrl, {
-        headers: {
-          "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-          "user-agent": "node-fetch mw-api-node-client",
-          cookie: this.#cookie,
-        },
-        method: "POST",
-        credentials: "include",
-        body: new URLSearchParams({ format: "json", utf8: 1, ...body }),
-      });
+      
+    } catch  {
+      
+    }
+  }
 
+  /**
+   * Sends a request to the MediaWiki API.
+   * @async
+   * @private
+   * @param {string} method - The HTTP method to use for the request.
+   * @param {object} params - The object params the request URL.
+   * @param {number} [retries=0] - The number of retries for failed requests.
+   * @returns {Promise<Object>} The JSON response from the MediaWiki API.
+   */
+  async #request(method, params, retries = 0) {
+    const url = new URL(this.wikiUrl);
+    const searchParams = new URLSearchParams({ format: "json", utf8: 1, ...params });
+    if (this.maxlag) {
+      searchParams.append("maxlag", this.maxlag);
+    }
+    let response;
+    try {
+      if (method === "GET") {
+        url.search = searchParams;
+        response = await fetch(url, {
+          headers: {
+            "user-agent": this.userAgent || "node-fetch mw-api-node-client",
+            cookie: this.#cookie,
+          },
+        });
+      } else {
+        response = await fetch(url, {
+          headers: {
+            "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "user-agent": this.userAgent || "node-fetch mw-api-node-client",
+            cookie: this.#cookie,
+          },
+          method: "POST",
+          credentials: "include",
+          body: searchParams,
+        });
+      }
       if (!response.ok) {
+        const retry = parseInt(response.headers.get("retry-after"));
+        if (retry && retries < this.maxRetries) {
+          logger.info(`Retrying fetch after ${retry} seconds...`);
+          await new Promise((resolve) => setTimeout(resolve, retry * 1000));
+          return this.#request(method, params, retries + 1);
+        } else if (retries >= this.maxRetries) {
+          logger.error(
+            `Max retries exceeded for ${url.toString()}, giving up...`,
+            response
+          );
+          throw new Error(`Max retries exceeded for ${url.toString()}`);
+        }
         const error = new Error(`HTTP error! status: ${response.status}`);
-        logger.error(`Failed to post to wiki: ${error.message}`);
+        logger.error(`Failed to fetch ${url.toString()}: ${error.message}`, response);
         throw error;
       }
-      if (body.action === "login") {
+      if (params.action === "login") {
         this.#cookie = extractCookie(response.headers.raw()["set-cookie"]);
       }
+
       return await response.json();
     } catch (error) {
-      logger.error(`Error in #postWiki: ${error.message}`, error);
+      logger.error(`Error in #request: ${error.message}`, error);
       throw error;
     }
   }
   /**
+   * Sends a POST request to the MediaWiki API with the provided body parameters.
+   *
+   * @async
+   * @param {Object} body - An object containing the parameters to be sent in the request body.
+   * @returns {Promise<Object>} The JSON response from the MediaWiki API.
+   */
+  async wikiPost(body) {
+    return await this.#request("POST", body);
+  }
+  /**
    * Makes a GET request to a specified URL with an optional query string.
    *
-   * @param {string} queryString - The query string to be appended to the URL.
-   * @param {boolean} withCookie - Indicates whether to include the user's cookie in the request headers. Default is `true`.
+   * @param {object} queryParams - The query string to be appended to the URL.
    * @returns {Promise<object>} - The response from the GET request in JSON format.
    */
-  async get(queryString, withCookie = true) {
-    if (!this.isLogedIn && withCookie && this.withLogedIn) {
+  async wikiGet(queryParams) {
+    if (!this.isLogedIn && this.withLogedIn) {
       await this.login();
     }
-    try {
-      const res = await fetch(`${this.wikiUrl}?${queryString}`, {
-        headers: { cookie: this.#cookie },
-      });
-      if (res.status !== 200) {
-        logger.error(`Error: ${res.status}`);
-        throw new Error(`Status: ${res.status}`);
-      }
-      return res.json();
-    } catch (error) {
-      logger.error(`Error in get: ${error.message}`, error);
-      throw new Error(error);
-    }
+    return await this.#request("GET", queryParams);
   }
   /**
    * method to login the user and get a cookie for forther operations
@@ -118,7 +147,7 @@ class Client {
       lgtoken,
     };
     try {
-      const { login } = await this.#postWiki(loginParams);
+      const { login } = await this.wikiPost(loginParams);
       console.log(login);
 
       if (!login.result || login.result !== "Success") {
@@ -150,7 +179,7 @@ class Client {
       action: "logout",
       token: this.token,
     };
-    this.#postWiki(logOutParams)
+    this.wikiPost(logOutParams)
       .then(() => logger.info("loged out successfully"))
       .catch((err) => logger.warn(err));
   }
@@ -248,7 +277,7 @@ class Client {
     );
 
     try {
-      const result = await this.#postWiki(editParams);
+      const result = await this.wikiPost(editParams);
       if (result.error) {
         logger.error(`Edit failed: ${result.error.info}`, result);
         throw new Error(`Edit failed: ${result.error.info}`);
@@ -277,7 +306,7 @@ class Client {
     Object.keys(deleteParams).forEach((key) => {
       if (deleteParams[key] === undefined) delete deleteParams[key];
     });
-    return await this.#postWiki(deleteParams);
+    return await this.wikiPost(deleteParams);
   }
   /**
    * method for moving pages
@@ -311,7 +340,7 @@ class Client {
     if (!movetalk) delete moveParams.movetalk;
     if (!movesubpages) delete moveParams.movesubpages;
     if (!noredirect) delete moveParams.noredirect;
-    return await this.#postWiki(moveParams);
+    return await this.wikiPost(moveParams);
   }
 
   /**
@@ -340,7 +369,7 @@ class Client {
     } else if (pageid) {
       lockParams.pageid = pageid;
     } else lockParams.title = title;
-    return await this.#postWiki(lockParams);
+    return await this.wikiPost(lockParams);
   }
   async unDelete({ title, reason }) {
     const params = {
@@ -351,7 +380,7 @@ class Client {
       token: this.token,
       utf8: 1,
     };
-    return await this.#postWiki(params);
+    return await this.wikiPost(params);
   }
   async sendMail({ target, subject, text }) {
     const mailParams = {
@@ -361,7 +390,7 @@ class Client {
       text,
       token: target.token,
     };
-    return await this.#postWiki(mailParams);
+    return await this.wikiPost(mailParams);
   }
   async sendMessageToTalkPage({ page, topic, content }) {
     const { csrftoken: token } = await this.#getToken("csrf&assert=bot");
@@ -373,7 +402,7 @@ class Client {
       nttopic: topic,
       ntcontent: content,
     };
-    const parsed = await this.#postWiki(flowParams);
+    const parsed = await this.wikiPost(flowParams);
     if (parsed?.error?.code === "invalid-page") {
       return await this.edit({
         title: page,
@@ -420,7 +449,7 @@ class Client {
       if (title) params.title = title;
       if (summary) params.summary = summary;
       if (!markbot) delete params.markbot;
-      return await this.#postWiki(params);
+      return await this.wikiPost(params);
     } catch (error) {
       logger.error("rollback filed", error);
       throw error;
@@ -428,4 +457,4 @@ class Client {
   }
 }
 
-export default Client;
+export default WikiClient;
