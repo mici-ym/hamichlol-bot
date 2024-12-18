@@ -4,7 +4,7 @@ async function testMaxStringLength() {
   const wikiRequest = new Requests("https://he.wikipedia.org/w/api.php");
   wikiRequest.withLogedIn = false;
 
-  let testString = "";
+  let testString = "a".repeat(50);
   let maxLength = 0;
   const increment = 100; // מספר התווים שיש להוסיף בכל צעד
 
