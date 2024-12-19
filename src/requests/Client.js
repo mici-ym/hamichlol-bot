@@ -23,13 +23,15 @@ class WikiClient {
    *
    * @param {String} wikiUrl
    */
-  constructor(wikiUrl, withLogedIn = true) {
+  constructor(wikiUrl, maxlag = 5, maxRetries = 3, withLogedIn = true) {
     if (!wikiUrl) {
       throw new Error("you didn't pass the url of your wiki");
     }
     this.wikiUrl = wikiUrl;
     this.isLoggedIn = false;
     this.withLogedIn = withLogedIn;
+    this.maxlag = maxlag;
+    this.maxRetries = maxRetries;
   }
 
   /**
@@ -144,6 +146,7 @@ class WikiClient {
     };
     try {
       const { login } = await this.wikiPost(loginParams);
+      this.#password = "";
 
       if (!login.result || login.result !== "Success") {
         logger.error(`Error in login: ${login.message}`, login);
