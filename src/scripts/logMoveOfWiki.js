@@ -121,8 +121,8 @@ async function processor(list, ns) {
   }
   request
     .edit({
-      title: "משתמש:מוטי בוט/לוגים",
-      text: `{{טורים|תוכן=\n${stringData}}}\n@[[משתמש:מוטי|מוטי]] ~~~~`,
+      title: "משתמש:מוטי בוט/העברות ויקי",
+      text: `{{טורים|תוכן=\n${stringData}}}\n@[[משתמש:מוטי|מוטי]], @[[משתמש:נריה|נריה]] ~~~~`,
       summary: 'דו"ח העברות ויקי',
       section: "new",
       sectiontitle: `דו"ח העברות ויקי - ${stringOfNs[ns]}`,
