@@ -28,24 +28,26 @@ export class Requests extends WikiClient {
    * @param {string} [params.useIdsOrTitles="ids"] - Determines whether to return results using page IDs or titles. Can be "ids" or "titles".
    * @param {boolean} [params.getContinue=true] - Whether to automatically fetch all results using continuation.
    * @param {Object} [params.options={}] - Additional query parameters to be included in the request.
-   * @returns {Promise<Object>} A promise that resolves to the query results. If useIdsOrTitles is "ids", it returns the raw query result. If "titles", it returns the result mapped from IDs to titles.
+   * @param {string} [method="GET"] - The HTTP method to use for the request.
+  * @returns {Promise<Object>} A promise that resolves to the query results. If useIdsOrTitles is "ids", it returns the raw query result. If "titles", it returns the result mapped from IDs to titles.
    */
   async queryPages({
     titles,
     useIdsOrTitles = "ids",
     getContinue = true,
     options = {},
+    method
   }) {
     const queryParams = {
       action: "query",
       format: "json",
       prop: "info",
-      ...options
+      ...options,
     };
     if (titles) {
       queryParams.titles =
-        typeof titles === "string" ? titles : titles.join("|")
-    };
+        typeof titles === "string" ? titles : titles.join("|");
+    }
     const query = await this.query({
       options: queryParams,
       getContinue,
@@ -65,19 +67,14 @@ export class Requests extends WikiClient {
    * @throws {Error} Throws an error if both pageid and title are provided.
    * @returns {Promise<Object>} A promise that resolves to the query results containing pages that embed the specified page.
    */
-  async embeddedin({
-    pageid,
-    title,
-    getContinue = true,
-    options = {},
-  }) {
+  async embeddedin({ pageid, title, getContinue = true, options = {} }) {
     const queryParams = {
       action: "query",
       format: "json",
       list: "embeddedin",
       einamespace: 0,
       eilimit: "max",
-      ...options
+      ...options,
     };
     if (pageid && title) {
       const errorMsg = "you must provide either pageid or title";
@@ -118,7 +115,7 @@ export class Requests extends WikiClient {
       list: "categorymembers",
       cmnamespace: 0,
       cmlimit: "max",
-      ...options
+      ...options,
     };
     if ((categoryId || options.categoryId) && categoryName) {
       const errorMessage = "you must provide either categoryId or categoryName";
@@ -160,7 +157,7 @@ export class Requests extends WikiClient {
       prop: prop || "wikitext",
       disableppupdate: 1,
       disableeditsection: 1,
-     ...options,
+      ...options,
     };
     if (page && pageid) {
       logger.error("you can't pass both page and pageid");
@@ -188,9 +185,10 @@ export class Requests extends WikiClient {
    * @param {Object} params - The parameters for the query.
    * @param {Object} [params.options={}] - Additional options to be included in the query parameters.
    * @param {boolean} [params.getContinue=true] - Whether to automatically fetch all results using continuation.
-   * @returns {Promise<Object>} A promise that resolves to the query result. If getContinue is true, it includes all paginated results.
+   * @param {string} [method="GET"] - The HTTP method to use for the request.
+  * @returns {Promise<Object>} A promise that resolves to the query result. If getContinue is true, it includes all paginated results.
    */
-  async query({ options = {}, getContinue = true }) {
+  async query({ options = {}, getContinue = true, method = "GET" }) {
     const queryParams = {
       action: "query",
       format: "json",
@@ -198,11 +196,13 @@ export class Requests extends WikiClient {
       ...options,
     };
 
-    const res = await super.wikiGet(queryParams);
+    const res = await (method === "Get"
+      ? super.wikiGet(queryParams)
+      : super.wikiPost(queryParams));
     if (!getContinue) {
       return res;
     } else {
-      return await this.getWithContinue(queryParams, res);
+      return await this.getWithContinue(queryParams, res, method);
     }
   }
 
@@ -211,10 +211,11 @@ export class Requests extends WikiClient {
    * @async
    * @param {object} queryParams - The query string for the GET request.
    * @param {object} data - The data from the previous query results.
+   * @param {string} method - The HTTP method used for the query.
    * @returns {Promise} - The result of the final query.
    * @throws {Error} - If an error occurs during the process.
    */
-  async getWithContinue(queryParams, data) {
+  async getWithContinue(queryParams, data, method) {
     if (!data || !data.query) {
       const errorMessage = "data or query is not valid";
       logger.error(errorMessage);
@@ -232,7 +233,9 @@ export class Requests extends WikiClient {
     try {
       while (contin) {
         Object.assign(queryParams, contin);
-        const res = await super.wikiGet(queryParams);
+        const res = await (method === "Get"
+          ? super.wikiGet(queryParams)
+          : super.wikiPost(queryParams));
         results = mergeResults(results, res);
         contin = res.continue;
       }
@@ -269,10 +272,10 @@ export function getRequestsInstance(nameInstance = "hamichlol", wikiUrl) {
   wikiUrl = wikiUrl
     ? wikiUrl
     : nameInstance === "hamichlol"
-      ? "https://www.hamichlol.org.il/w/api.php"
-      : process.platform === "win32"
-        ? "https://www.hamichlol.org.il/import/get_wik1i.php"
-        : "https://he.wikipedia.org/api.php";
+    ? "https://www.hamichlol.org.il/w/api.php"
+    : process.platform === "win32"
+    ? "https://www.hamichlol.org.il/import/get_wik1i.php"
+    : "https://he.wikipedia.org/api.php";
   if (!instance.has(nameInstance)) {
     logger.info("creating instance: " + nameInstance);
     instance.set(nameInstance, new Requests(wikiUrl));

@@ -55,7 +55,7 @@ class WikiClient {
         url.search = searchParams;
         response = await fetch(url, {
           headers: {
-            "user-agent": this.userAgent || "node-fetch mw-api-node-client",
+            "user-agent": this.userAgent || "hamichlol-bot",
             cookie: this.#cookie,
           },
         });
@@ -63,7 +63,7 @@ class WikiClient {
         response = await fetch(url, {
           headers: {
             "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "user-agent": this.userAgent || "node-fetch mw-api-node-client",
+            "user-agent": this.userAgent || "hamichlol-bot",
             cookie: this.#cookie,
           },
           method: "POST",
