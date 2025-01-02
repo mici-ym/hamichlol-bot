@@ -50,15 +50,15 @@ async function processor(list, ns) {
   }
   const dataForPagesLocal = await createTable(titlesList, "loc", 30);
   const dataForPagesWiki = await createTable(titlesList, "wiki", 30);
-  const badTitle = new RegExp(
-    /(BDSM|להט"ב|לט"ב|להטב"ק|לסבית|לסביות|סקסואל|קסואל|מצעד הגאווה|מיניות|פורנוגרפיה|\[\[פין\]\]|\[\[פות\]\])/,
-    "i"
-  );
+  const badTitle = new RegExp(/(BDSM|להט"ב|לט"ב|להטב"ק|לסבית|לסביות|סקסואל|קסואל|מצעד הגאווה|מיניות|פורנוגרפיה|\[\[פין\]\]|\[\[פות\]\])/, "i");
+
 
   for (const item of logList) {
     if (
-      cackDataPage(dataForPagesLocal[item.from]) ===
-        cackDataPage(dataForPagesWiki[item.from]) ||
+      (cackDataPage(dataForPagesLocal[item.from]) ===
+        cackDataPage(dataForPagesWiki[item.from]) &&
+        cackDataPage(dataForPagesLocal[item.to]) ===
+          cackDataPage(dataForPagesWiki[item.to])) ||
       badTitle.test(item.to) ||
       badTitle.test(item.from)
     ) {
