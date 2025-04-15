@@ -92,6 +92,8 @@ async function main() {
   const start =
     process.env.LAST_RUN ||
     new Date(new Date().getTime() - 1000 * 60 * 60 * 24 * 7).toISOString(); // 7 days ago
+    console.log(start);
+    
   await cat(start);
   await rc(start);
   request.logout();
