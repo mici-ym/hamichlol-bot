@@ -2,10 +2,7 @@ import { getRequestsInstance } from "../requests/requests.js";
 import logger from "../logger.js";
 
 const hamichlol = getRequestsInstance();
-const wikipedia = getRequestsInstance(
-  "wiki",
-  "https://import.hamichlol.org.il/"
-);
+const wikipedia = getRequestsInstance("wiki");
 wikipedia.withLogedIn = false;
 
 async function main() {
