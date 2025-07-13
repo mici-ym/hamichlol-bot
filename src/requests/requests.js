@@ -51,6 +51,7 @@ export class Requests extends WikiClient {
     const query = await this.query({
       options: queryParams,
       getContinue,
+      method
     });
     return useIdsOrTitles === "ids" ? query : mapIdsToNames(query, "title");
   }

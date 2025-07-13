@@ -1,9 +1,11 @@
 import { Requests } from "../requests/requests.js";
 
 const wikiRequest = new Requests("https://he.wikipedia.org/w/api.php");
-wikiRequest.withLogedIn = false;
+wikiRequest.login(process.env.WIKI_USER, process.env.WIKI_PASSWORD)
 const request = new Requests("https://www.hamichlol.org.il/w/api.php");
 
+const lestart = new Date("2025-03-01T00:00:00.000Z").toISOString();
+const leend = new Date("2024-12-01T00:00:00.000Z").toISOString();
 /**
  * The `main` function asynchronously fetches log events from a wiki API and processes them.
  * It makes a request to the wiki API to retrieve log events of type "move" within a specified date range.
@@ -17,8 +19,8 @@ async function main(ns = 0) {
       list: "logevents", // Specifies the type of list to fetch - log events.
       leprop: "title|type|timestamp|comment|details", // Properties to include in each log event.
       letype: "move", // Filters the log events to only include "move" type events.
-      lestart: "2024-12-01T00:00:00.000Z", // The start timestamp for fetching log events.
-      leend: "2024-10-00T00:00:00.000Z", // The end timestamp for fetching log events.
+      lestart, // The start timestamp for fetching log events.
+      leend, // The end timestamp for fetching log events.
       lenamespace: ns, // Specifies the namespace of the pages to fetch log events for.
       lelimit: "max", // Sets the limit for the number of log events to fetch to the maximum allowed.
     },
@@ -48,8 +50,8 @@ async function processor(list, ns) {
     titlesList.add(item.from);
     titlesList.add(item.to);
   }
-  const dataForPagesLocal = await createTable(titlesList, "loc", 30);
-  const dataForPagesWiki = await createTable(titlesList, "wiki", 30);
+  const dataForPagesLocal = await createTable(Array.from(titlesList), "loc", 500);
+  const dataForPagesWiki = await createTable(Array.from(titlesList), "wiki", 500);
   const badTitle = new RegExp(/(BDSM|להט"ב|לט"ב|להטב"ק|לסבית|לסביות|סקסואל|קסואל|מצעד הגאווה|מיניות|פורנוגרפיה|\[\[פין\]\]|\[\[פות\]\])/, "i");
 
 
@@ -70,7 +72,7 @@ async function processor(list, ns) {
       item.to
     }]] <small>(${
       objOfHe[cackDataPage(dataForPagesLocal[item.to])]
-    })</small>\n`;
+        })</small>\n`;
   }
   request
     .edit({
@@ -78,8 +80,8 @@ async function processor(list, ns) {
       text: `{{טורים|תוכן=\n${stringData}}}\n@[[משתמש:מוטי|מוטי]], @[[U:נריה|נריה]] לתשו"ל. תודה! ~~~~`,
       summary: 'דו"ח העברות ויקי',
       section: "new",
-      sectiontitle: `דו"ח העברות ויקי - ${stringOfNs[ns]}`,
-      nocreate: false,
+      sectiontitle: `דו"ח העברות ויקי - ${stringOfNs[ns]} (${leend.toLocaleDateString()}–${lestart.toLocaleDateString()})`,
+      //nocreate: false,
     })
     .finally((data) => {
       console.log(data);
@@ -133,7 +135,7 @@ async function dataOfPages(titles, target) {
       rdprop: "title",
     },
     method: "POST",
-  });
+    });
 }
 
 function cackDataPage(data) {
