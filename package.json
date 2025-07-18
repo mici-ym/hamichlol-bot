@@ -14,14 +14,14 @@
   "author": "moti of hamichlol.org.il",
   "license": "",
   "dependencies": {
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
     "node-fetch": "^3.3.2",
     "winston": "^3.17.0"
   },
   "devDependencies": {
-    "@babel/eslint-parser": "^7.25.9",
-    "@babel/preset-env": "^7.26.0",
+    "@babel/eslint-parser": "^7.28.0",
+    "@babel/preset-env": "^7.28.0",
     "babel-jest": "^29.7.0",
-    "eslint": "^9.15.0"
+    "eslint": "^9.31.0"
   }
 }
