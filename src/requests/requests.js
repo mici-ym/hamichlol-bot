@@ -275,7 +275,7 @@ export function getRequestsInstance(nameInstance = "hamichlol", wikiUrl) {
     ? "https://www.hamichlol.org.il/w/api.php"
     : process.platform === "win32"
     ? "https://www.hamichlol.org.il/import/get_wik1i.php"
-    : "https://he.wikipedia.org/api.php";
+    : "https://he.wikipedia.org/w/api.php";
   if (!instance.has(nameInstance)) {
     logger.info("creating instance: " + nameInstance);
     instance.set(nameInstance, new Requests(wikiUrl));
