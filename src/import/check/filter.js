@@ -8,7 +8,7 @@ import lists from "./listes.json" with {type: 'json'};
  */
 async function checkWord(text) {
   const foundWords = {};
-  const {colorMapping} = await import("https://www.hamichlol.org.il/w/index.php?title=מדיה_ויקי:Gadget-checkWords.json&action=raw")
+  const {colorMapping} = await import(encodeURIComponent("https://www.hamichlol.org.il/w/index.php?title=מדיה_ויקי:Gadget-checkWords.json&action=raw"))
   Object.entries(lists.wordesOfFilter).forEach(([listName, words]) => {
     words.forEach(word => {
       const regex = new RegExp(word, 'gi');
