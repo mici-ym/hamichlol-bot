@@ -8,20 +8,25 @@ import lists from "./listes.json" with {type: 'json'};
  */
 async function checkWord(text) {
   const foundWords = {};
-  const {colorMapping} = await import(encodeURIComponent("https://www.hamichlol.org.il/w/index.php?title=מדיה_ויקי:Gadget-checkWords.json&action=raw"))
+  const { colorMapping } = await import(
+    encodeURIComponent(
+      "https://www.hamichlol.org.il/w/index.php?title=מדיה_ויקי:Gadget-checkWords.json&action=raw",
+      { with: { type: "json" } }
+    )
+  );
   Object.entries(lists.wordesOfFilter).forEach(([listName, words]) => {
-    words.forEach(word => {
-      const regex = new RegExp(word, 'gi');
+    words.forEach((word) => {
+      const regex = new RegExp(word, "gi");
       const matches = Array.from(text.matchAll(regex));
       if (matches.length > 0) {
         if (!foundWords[listName]) {
           foundWords[listName] = [];
         }
-        foundWords[listName].push({ 
-          expression: regex, 
+        foundWords[listName].push({
+          expression: regex,
           matched: matches[0][0],
           input: text.substring(matches[0].index - 15, matches[0].index + 10),
-          count: matches.length 
+          count: matches.length,
         });
       }
     });
@@ -29,23 +34,23 @@ async function checkWord(text) {
 
   Object.entries(colorMapping).forEach(([name, list]) => {
     const words = list.regexs;
-    words.forEach(word => {
-      const regex = new RegExp(word.pattern, 'gi');
+    words.forEach((word) => {
+      const regex = new RegExp(word.pattern, "gi");
       const matches = Array.from(text.matchAll(regex));
       if (matches.length > 0) {
         if (!foundWords[name]) {
           foundWords[name] = [];
         }
-        foundWords[name].push({ 
-          expression: regex, 
+        foundWords[name].push({
+          expression: regex,
           matched: matches[0][0],
           input: text.substring(matches[0].index - 15, matches[0].index + 10),
-          count: matches.length 
+          count: matches.length,
         });
       }
     });
   });
- 
+
   return Object.keys(foundWords).length > 0 ? foundWords : false;
 }
 
