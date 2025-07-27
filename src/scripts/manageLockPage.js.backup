@@ -17,13 +17,6 @@ async function cat(gcmstart) {
         gcmstart,
       },
     });
-    
-    // Check if query returned any results
-    if (!query || Object.keys(query).length === 0) {
-      logger.info("No new pages found in category since last run");
-      return;
-    }
-    
     let count = 0;
     for (const page in query) {
       if (query[page].allevel === "edit-semi") continue;
@@ -41,8 +34,8 @@ async function cat(gcmstart) {
     }
     logger.info(`${count} pages locked`);
   } catch (error) {
-    logger.error("Error in cat() function:", error);
-    // Don't exit on error, just log it
+    logger.error(error);
+    process.exit(1);
   }
 }
 
@@ -63,13 +56,6 @@ async function rc(rcstart) {
   };
   try {
     const query = await request.query({ options: params });
-    
-    // Check if query returned any results
-    if (!query || Object.keys(query).length === 0) {
-      logger.info("No recent changes found since last run");
-      return;
-    }
-    
     let count = { none: 0, semi: 0 };
     for (const page in query) {
       const { allevel, title, categories } = query[page];
@@ -82,6 +68,7 @@ async function rc(rcstart) {
           });
           logger.info(`Page ${data.title} is unlocked`, data);
           count.none++;
+          //console.log(`Page ${title} is unlocked`, data);
         } else if (categories[0].title === "קטגוריה:המכלול: ערכים מילוניים") {
           const { aspaklaryalockdown: data } = await request.lockPage({
             title: query[page].title,
@@ -90,34 +77,25 @@ async function rc(rcstart) {
           });
           logger.info(`Page ${data.title} is locked`, data);
           count.semi++;
+          //console.log(`Page ${title} is locked`, data);
         }
       }
     }
     logger.info(`Pages unlocked: ${count.none}, pages locked: ${count.semi}`);
   } catch (error) {
-    logger.error("Error in rc() function:", error);
-    // Don't exit on error, just log it
-  }
-}
-
-async function main() {
-  try {
-    const start =
-      process.env.LAST_RUN ||
-      new Date(new Date().getTime() - 1000 * 60 * 60 * 24 * 7).toISOString(); // 7 days ago
-    
-    console.log(`Processing changes since: ${start}`);
-    logger.info(`Starting manageLockPage with start time: ${start}`);
-    
-    await cat(start);
-    await rc(start);
-    
-    logger.info("manageLockPage completed successfully");
-    request.logout();
-  } catch (error) {
-    logger.error("Fatal error in main():", error);
+    logger.error(error);
     process.exit(1);
   }
 }
 
+async function main() {
+  const start =
+    process.env.LAST_RUN ||
+    new Date(new Date().getTime() - 1000 * 60 * 60 * 24 * 7).toISOString(); // 7 days ago
+    console.log(start);
+    
+  await cat(start);
+  await rc(start);
+  request.logout();
+}
 main();
