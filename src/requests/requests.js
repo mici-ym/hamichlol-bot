@@ -10,12 +10,12 @@ import logger from "../logger.js";
  */
 export class Requests extends WikiClient {
   wikiUrl = "";
-  constructor(wikiUrl) {
+  constructor(wikiUrl, proxyAgent = null) {
     if (!wikiUrl) {
       logger.error("you didn't pass the url of your wiki");
       throw new Error("you didn't pass the url of your wiki");
     }
-    super(wikiUrl);
+    super(wikiUrl, 5, 3, true, proxyAgent);
     this.wikiUrl = wikiUrl;
   }
 

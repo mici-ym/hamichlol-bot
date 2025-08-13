@@ -1,5 +1,7 @@
 import fetch from "node-fetch";
 import dotenv from "dotenv";
+import { SocksProxyAgent } from "socks-proxy-agent";
+globalThis.SocksProxyAgentCtor = SocksProxyAgent;
 dotenv.config();
 import { extractCookie } from "./utils/cookie.js";
 import logger from "../logger.js";
@@ -18,12 +20,20 @@ class WikiClient {
   #password = process.env.MC_PASSWORD || "";
   token = "";
   isLoggedIn = false;
+  proxyAgent = null;
 
   /**
    *
    * @param {String} wikiUrl
    */
-  constructor(wikiUrl, maxlag = 5, maxRetries = 3, withLogedIn = true) {
+  /**
+   * @param {String} wikiUrl
+   * @param {Number} maxlag
+   * @param {Number} maxRetries
+   * @param {Boolean} withLogedIn
+   * @param {Object} [proxyOptions] - { type: 'socks', host: '127.0.0.1', port: 8080 }
+   */
+  constructor(wikiUrl, maxlag = 5, maxRetries = 3, withLogedIn = true, proxyOptions = null) {
     if (!wikiUrl) {
       throw new Error("you didn't pass the url of your wiki");
     }
@@ -32,6 +42,13 @@ class WikiClient {
     this.withLogedIn = withLogedIn;
     this.maxlag = maxlag;
     this.maxRetries = maxRetries;
+    if (proxyOptions && proxyOptions.type === 'socks') {
+      // import for socks-proxy-agent (ESM)
+      // Note: import must be at top-level in ES Modules
+      // לכן נייבא למעלה
+      const proxyUrl = `socks://${proxyOptions.host}:${proxyOptions.port}`;
+      this.proxyAgent = new globalThis.SocksProxyAgentCtor(proxyUrl);
+    }
   }
 
   /**
@@ -51,25 +68,28 @@ class WikiClient {
     }
     let response;
     try {
+      const fetchOptions = {
+        headers: {
+          "user-agent": this.userAgent || "hamichlol-bot",
+          cookie: this.#cookie,
+        },
+        agent: this.proxyAgent || undefined,
+      };
       if (method === "GET") {
         url.search = searchParams;
-        response = await fetch(url, {
-          headers: {
-            "user-agent": this.userAgent || "hamichlol-bot",
-            cookie: this.#cookie,
-          },
-        });
+        response = await fetch(url, fetchOptions);
       } else {
-        response = await fetch(url, {
+        const postOptions = {
+          ...fetchOptions,
           headers: {
+            ...fetchOptions.headers,
             "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "user-agent": this.userAgent || "hamichlol-bot",
-            cookie: this.#cookie,
           },
           method: "POST",
           credentials: "include",
           body: searchParams,
-        });
+        };
+        response = await fetch(url, postOptions);
       }
       if (!response.ok) {
         const retry = parseInt(response.headers.get("retry-after"));
@@ -118,6 +138,7 @@ class WikiClient {
     if (!this.isLoggedIn && this.withLogedIn) {
       await this.login();
     }
+    // מחזיר את כל התגובה מה-API
     return await this.#request("GET", queryParams);
   }
   /**
