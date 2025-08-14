@@ -23,30 +23,59 @@ class WikiClient {
   proxyAgent = null;
 
   /**
+   * Creates a MediaWiki API client.
    *
-   * @param {String} wikiUrl
+   * @param {Object} options - Options object for configuration (recommended)
+   * @param {string} options.wikiUrl - The URL of the wiki API (required)
+   * @param {number} [options.maxlag=5] - Maximum lag parameter for MediaWiki API
+   * @param {number} [options.maxRetries=3] - Maximum number of retries for failed requests
+   * @param {boolean} [options.withLogedIn=true] - Whether to login automatically before requests
+   * @param {string} [options.userAgent="hamichlol-bot"] - User agent string for requests
+   * @param {Object} [options.proxyOptions] - Proxy configuration object (e.g. { type: 'socks', host: '127.0.0.1', port: 1080 })
+   * @param {string} [wikiUrl] - @deprecated Passing a string as the first parameter is deprecated. Use an options object instead.
+   * @param {number} [maxlag] - @deprecated For backward compatibility only.
+   * @param {number} [maxRetries] - @deprecated For backward compatibility only.
+   * @param {boolean} [withLogedIn] - @deprecated For backward compatibility only.
+   * @param {string} [userAgent] - @deprecated For backward compatibility only.
+   * @param {Object} [proxyOptions] - @deprecated For backward compatibility only.
+   *
+   * @example
+   * // Recommended usage:
+   * const client = new WikiClient({
+   *   wikiUrl: "https://www.hamichlol.org.il/w/api.php",
+   *   maxlag: 5,
+   *   maxRetries: 3,
+   *   withLogedIn: true,
+   *   userAgent: "my-bot",
+   *   proxyOptions: { type: "socks", host: "127.0.0.1", port: 1080 }
+   * });
+   *
+   * // Deprecated usage:
+   * const client = new WikiClient("https://www.hamichlol.org.il/w/api.php");
    */
-  /**
-   * @param {String} wikiUrl
-   * @param {Number} maxlag
-   * @param {Number} maxRetries
-   * @param {Boolean} withLogedIn
-   * @param {Object} [proxyOptions] - { type: 'socks', host: '127.0.0.1', port: 8080 }
-   */
-  constructor(wikiUrl, maxlag = 5, maxRetries = 3, withLogedIn = true, proxyOptions = null) {
-    if (!wikiUrl) {
+  constructor(options, maxlag, maxRetries, withLogedIn, userAgent, proxyOptions) {
+    // Backward compatibility: if first param is string, treat as old signature
+    if (typeof options === 'string') {
+      options = {
+        wikiUrl: options,
+        maxlag,
+        maxRetries,
+        withLogedIn,
+        userAgent,
+        proxyOptions,
+      };
+    }
+    if (!options || !options.wikiUrl) {
       throw new Error("you didn't pass the url of your wiki");
     }
-    this.wikiUrl = wikiUrl;
+    this.wikiUrl = options.wikiUrl;
     this.isLoggedIn = false;
-    this.withLogedIn = withLogedIn;
-    this.maxlag = maxlag;
-    this.maxRetries = maxRetries;
-    if (proxyOptions && proxyOptions.type === 'socks') {
-      // import for socks-proxy-agent (ESM)
-      // Note: import must be at top-level in ES Modules
-      // לכן נייבא למעלה
-      const proxyUrl = `socks://${proxyOptions.host}:${proxyOptions.port}`;
+    this.withLogedIn = options.withLogedIn !== undefined ? options.withLogedIn : true;
+    this.maxlag = options.maxlag !== undefined ? options.maxlag : 5;
+    this.maxRetries = options.maxRetries !== undefined ? options.maxRetries : 3;
+    this.userAgent = options.userAgent || "hamichlol-bot";
+    if (options.proxyOptions && options.proxyOptions.type === 'socks') {
+      const proxyUrl = `socks://${options.proxyOptions.host}:${options.proxyOptions.port}`;
       this.proxyAgent = new globalThis.SocksProxyAgentCtor(proxyUrl);
     }
   }
