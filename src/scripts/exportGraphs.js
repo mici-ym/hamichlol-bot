@@ -48,6 +48,53 @@ function transliterateHebrewToEnglish(hebrew) {
     .join("");
 }
 
+function generateTabContent(page) {
+  const { title, template } = page;
+  const { x, y, xAxisTitle: xTitle, yAxisTitle: yTitle } = template;
+  const xArr = x.split(",").map((item) => item.trim());
+  const yArr = y.split(",").map((item) => item.trim());
+  const tabData = {
+    license: "CC0-1.0",
+    sources: `נלקח מהדף [[:he:${title}]]`,
+    schema: {
+      fields: [
+        { name: "x", type: "string" },
+        { name: "y", type: "string" },
+      ],
+      data: xArr.map((xItem, index) => {
+        return [xItem, yArr[index]];
+      }),
+    },
+  };
+  if (xTitle) {
+    tabData.schema.fields[0].title = { he: xTitle };
+  }
+  if (yTitle) {
+    tabData.schema.fields[1].title = { he: yTitle };
+  }
+  console.log("Tab data:", JSON.stringify(tabData, null, 2));
+  return JSON.stringify(tabData, null, 2);
+}
+
+function generateChartContent(page) {
+  const { title, template } = page;
+  const chartData = {
+    license: "CC0-1.0",
+    sources: `נלקח מהדף [[:he:${title}]]`,
+    type: template.type || "line",
+    title: title,
+    sources: template.tabName,
+  };
+  if (template.xAxisTitle) {
+    chartData.xAxis = template.xAxisTitle;
+  }
+  if (template.yAxisTitle) {
+    chartData.yAxis = template.yAxisTitle;
+  }
+  console.log("Chart data:", chartData);
+  return JSON.stringify(chartData, null, 2);
+}
+
 (async () => {
   // Wikimedia user-agent policy: English only, include bot name/version and user page/contact (URL-encoded if needed)
   const userAgent = `wikipedia-script/1.0 (https://he.wikipedia.org/wiki/User:%D7%9E%D7%99%D7%9B%D7%99_%D7%99-%D7%9D)`;
@@ -65,11 +112,12 @@ function transliterateHebrewToEnglish(hebrew) {
   const commonsClient = new Requests({
     wikiUrl: "https://commons.wikimedia.org/w/api.php",
     userAgent,
+    withLogedIn: false,
   });
-  /*await commonsClient.login(
+  await commonsClient.login(
     process.env.COMMONS_USERNAME,
     process.env.COMMONS_PASSWORD
-  );*/
+  );
 
   const pagesWithGraph = await wikiClient.embeddedin({
     title: "Template:גרף",
@@ -109,6 +157,15 @@ function transliterateHebrewToEnglish(hebrew) {
       logger.warn(`No template found in page: ${title}`);
       continue;
     }
+    page.template = getTemplateKeyValueData(template);
+    if (!page.template || !page.template.x) {
+      logger.warn(`No template data found in page: ${title}`);
+      continue;
+    }
+    if (page.template.type && page.template.type !== "line") {
+      logger.warn(`type of graph not line, page: ${title}`);
+      continue;
+    }
     const enLabel = await wikiDataClient.wikiGet({
       action: "wbgetentities",
       format: "json",
@@ -122,55 +179,58 @@ function transliterateHebrewToEnglish(hebrew) {
     page.enName =
       enLabel?.entities?.[wikibaseItem]?.labels?.en?.value ||
       transliterateHebrewToEnglish(title);
-    page.template = getTemplateKeyValueData(template);
-    if (!page.template || !page.template.x) {
-      logger.warn(`No template data found in page: ${title}`);
-      continue;
-    }
-    const tabName = `Data:HEwiki.chart.${page.enName}.tab`;
+    const tabName = `Data:HeWiki.${page.enName}.tab`;
     const pageList = { title };
-    await commonsClient
-      .edit({
-        title: tabName,
-        text: generateTabContent(page),
-        createonly: true,
-      })
-      .then((edit) => {
-        pageList[title].tabName = tabName;
-        logger.info(`Successfully edited tab: ${tabName}`, edit);
-      })
-      .catch((error) => {
-        logger.error(`Error editing tab: ${tabName}`, error);
-      });
-    const chartName = `Data:HEwiki.${page.enName}.chart`;
-    await commonsClient
-      .edit({
-        title: chartName,
-        text: generateChartContent(dataPages),
-        createonly: true,
-      })
-      .then((edit) => {
-        pageList[title].chartName = chartName;
-        logger.info(`Successfully edited chart: ${chartName}`, edit);
-      })
-      .catch((error) => {
-        logger.error(`Error editing chart: ${chartName}`, error);
-      });
+
+    const { edit, error } = await commonsClient.edit({
+      title: tabName,
+      text: generateTabContent(page),
+      summary: `Importing graph data from [[:he:${title}]]`,
+      createonly: true,
+    });
+
+    if (edit) {
+      pageList[title].tabName = tabName;
+      logger.info(`Successfully edited tab: ${tabName}`, edit);
+    } else {
+      logger.error(`Error editing tab: ${tabName}`, error);
+    }
+    const chartName = `Data:HeWiki.${page.enName}.chart`;
+    const { edit: chartEdit, error: chartError } = await commonsClient.edit({
+      title: chartName,
+      text: generateChartContent(dataPages),
+      summary: `Importing graph data from [[:he:${title}]]`,
+      createonly: true,
+    });
+
+    if (chartEdit) {
+      pageList[title].chartName = chartName;
+      logger.info(`Successfully edited chart: ${chartName}`, chartEdit);
+    } else {
+      logger.error(`Error editing chart: ${chartName}`, chartError);
+    }
     listPages.push(pageList);
   }
   logger.info("List of pages with graphs:", listPages);
-  //commonsClient.logout();
-  /*wikiClient.login(process.env.WIKI_USERNAME, process.env.WIKI_PASSWORD).then((login) => {
-        if (login) {
-            wikiClient.edit({
-                title: "משתמש:מיכי י-ם/ייצוא גרפים",
-                content: generateTemplateContent(listPages),
-            }).then((edit) => {
-                logger.info(`Successfully edited user page: ${edit.title}`, edit);
-                wikiClient.logout();
-            }).catch((error) => {
-                logger.error(`Error editing user page: ${error}`);
-            });
-        }
-    })*/
+  await commonsClient.logout();
+
+  wikiClient
+    .login(process.env.WIKI_USERNAME, process.env.WIKI_PASSWORD)
+    .then((login) => {
+      if (login) {
+        wikiClient
+          .edit({
+            title: "משתמש:מיכי י-ם/ייצוא גרפים",
+            content: generateTemplateContent(listPages),
+          })
+          .then((edit) => {
+            logger.info(`Successfully edited user page: ${edit.title}`, edit);
+            wikiClient.logout();
+          })
+          .catch((error) => {
+            logger.error(`Error editing user page: ${error}`);
+            wikiClient.logout();
+          });
+      }
+    });
 })();
