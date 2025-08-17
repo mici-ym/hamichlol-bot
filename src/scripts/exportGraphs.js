@@ -1,9 +1,13 @@
+import dotenv from "dotenv";
 import { Requests } from "../requests/requests.js";
 import {
   findTemplate,
   getTemplateKeyValueData,
 } from "../parser/newTemplateParser.js";
 import logger from "../logger.js";
+
+dotenv.config();
+
 /**
  * Transliterate Hebrew text to English (phonetic).
  * @param {string} hebrew - Hebrew text to transliterate
@@ -55,16 +59,16 @@ function generateTabContent(page) {
   const yArr = y.split(",").map((item) => item.trim());
   const tabData = {
     license: "CC0-1.0",
-    sources: `נלקח מהדף [[:he:${title}]]`,
+    sources: `importing from [[:he:${title}]]`,
     schema: {
       fields: [
         { name: "x", type: "string" },
         { name: "y", type: "string" },
       ],
-      data: xArr.map((xItem, index) => {
-        return [xItem, yArr[index]];
-      }),
     },
+    data: xArr.map((xItem, index) => {
+      return [xItem, yArr[index]];
+    }),
   };
   if (xTitle) {
     tabData.schema.fields[0].title = { he: xTitle };
@@ -77,22 +81,34 @@ function generateTabContent(page) {
 }
 
 function generateChartContent(page) {
-  const { title, template } = page;
+  const { title, template, enName } = page;
   const chartData = {
     license: "CC0-1.0",
-    sources: `נלקח מהדף [[:he:${title}]]`,
+    version: 1,
+    sources: `importing from [[:he:${title}]]`,
     type: template.type || "line",
-    title: title,
-    sources: template.tabName,
+    title: enName,
+    sources: `HeWiki.${enName}.tab`,
   };
   if (template.xAxisTitle) {
-    chartData.xAxis = template.xAxisTitle;
+    chartData.xAxis = { title: template.xAxisTitle };
   }
   if (template.yAxisTitle) {
-    chartData.yAxis = template.yAxisTitle;
+    chartData.yAxis = { title: template.yAxisTitle };
   }
   console.log("Chart data:", chartData);
   return JSON.stringify(chartData, null, 2);
+}
+
+function generateOutputContent(pages) {
+  const output = [];
+  for (const page of pages) {
+    const { title, tabName, chartName } = page;
+    output.push(
+      `* [[${title}]] - [[commons:${tabName}|Tab]] - [[commons:${chartName}|Chart]]`
+    );
+  }
+  return output.join("\n");
 }
 
 (async () => {
@@ -116,7 +132,8 @@ function generateChartContent(page) {
   });
   await commonsClient.login(
     process.env.COMMONS_USERNAME,
-    process.env.COMMONS_PASSWORD
+    process.env.COMMONS_PASSWORD,
+    "user"
   );
 
   const pagesWithGraph = await wikiClient.embeddedin({
@@ -186,11 +203,11 @@ function generateChartContent(page) {
       title: tabName,
       text: generateTabContent(page),
       summary: `Importing graph data from [[:he:${title}]]`,
-      createonly: true,
+      //createonly: true,
     });
 
     if (edit) {
-      pageList[title].tabName = tabName;
+      pageList.tabName = tabName;
       logger.info(`Successfully edited tab: ${tabName}`, edit);
     } else {
       logger.error(`Error editing tab: ${tabName}`, error);
@@ -198,13 +215,13 @@ function generateChartContent(page) {
     const chartName = `Data:HeWiki.${page.enName}.chart`;
     const { edit: chartEdit, error: chartError } = await commonsClient.edit({
       title: chartName,
-      text: generateChartContent(dataPages),
+      text: generateChartContent(page),
       summary: `Importing graph data from [[:he:${title}]]`,
       createonly: true,
     });
 
     if (chartEdit) {
-      pageList[title].chartName = chartName;
+      pageList.chartName = chartName;
       logger.info(`Successfully edited chart: ${chartName}`, chartEdit);
     } else {
       logger.error(`Error editing chart: ${chartName}`, chartError);
@@ -215,13 +232,16 @@ function generateChartContent(page) {
   await commonsClient.logout();
 
   wikiClient
-    .login(process.env.WIKI_USERNAME, process.env.WIKI_PASSWORD)
+    .login(process.env.WIKI_USERNAME, process.env.WIKI_PASSWORD, "user")
     .then((login) => {
       if (login) {
         wikiClient
           .edit({
             title: "משתמש:מיכי י-ם/ייצוא גרפים",
-            content: generateTemplateContent(listPages),
+            summary: "לוג ייצוא גרפים",
+            content: generateOutputContent(listPages) + "\n\n~~~~",
+            section: "new",
+            sectiontitle: "ייצוא גרפים"
           })
           .then((edit) => {
             logger.info(`Successfully edited user page: ${edit.title}`, edit);

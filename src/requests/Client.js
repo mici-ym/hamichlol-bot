@@ -1,9 +1,9 @@
 import fetch from "node-fetch";
 import dotenv from "dotenv";
+import { CookieJar } from "tough-cookie";
 import { SocksProxyAgent } from "socks-proxy-agent";
 globalThis.SocksProxyAgentCtor = SocksProxyAgent;
 dotenv.config();
-import { extractCookie } from "./utils/cookie.js";
 import logger from "../logger.js";
 
 /**
@@ -15,12 +15,12 @@ import logger from "../logger.js";
  */
 class WikiClient {
   wikiUrl;
-  #cookie = "";
   userName = process.env.MC_USER || "";
   #password = process.env.MC_PASSWORD || "";
   token = "";
   isLoggedIn = false;
   proxyAgent = null;
+  #cookieJar;
 
   /**
    * Creates a MediaWiki API client.
@@ -74,6 +74,7 @@ class WikiClient {
     this.maxlag = options.maxlag !== undefined ? options.maxlag : 5;
     this.maxRetries = options.maxRetries !== undefined ? options.maxRetries : 3;
     this.userAgent = options.userAgent || "hamichlol-bot";
+    this.#cookieJar = new CookieJar();
     if (options.proxyOptions && options.proxyOptions.type === 'socks') {
       const proxyUrl = `socks://${options.proxyOptions.host}:${options.proxyOptions.port}`;
       this.proxyAgent = new globalThis.SocksProxyAgentCtor(proxyUrl);
@@ -97,10 +98,13 @@ class WikiClient {
     }
     let response;
     try {
+      // Get cookies for this URL
+      const cookieString = await this.#cookieJar.getCookieString(url.toString());
+      
       const fetchOptions = {
         headers: {
           "user-agent": this.userAgent || "hamichlol-bot",
-          cookie: this.#cookie,
+          cookie: cookieString,
         },
         agent: this.proxyAgent || undefined,
       };
@@ -138,7 +142,13 @@ class WikiClient {
         throw error;
       }
       if (params.action === "login") {
-        this.#cookie = extractCookie(response.headers.raw()["set-cookie"]);
+        // Store cookies from login response
+        const setCookieHeaders = response.headers.raw()["set-cookie"];
+        if (setCookieHeaders) {
+          for (const cookie of setCookieHeaders) {
+            await this.#cookieJar.setCookie(cookie, url.toString());
+          }
+        }
       }
 
       return await response.json();
@@ -247,22 +257,49 @@ class WikiClient {
    */
   async #getToken(type) {
     try {
-      const res = await fetch(
-        `${this.wikiUrl}?action=query&format=json&meta=tokens&type=${type}`,
-        {
-          headers: {
-            cookie: this.#cookie || "",
-          },
-        }
-      );
+      const url = `${this.wikiUrl}?action=query&format=json&meta=tokens&type=${type}`;
+      const cookieString = await this.#cookieJar.getCookieString(url);
+      
+      const res = await fetch(url, {
+        headers: {
+          cookie: cookieString || "",
+        },
+      });
       const jsonRes = await res.json();
 
       if (res.headers.raw()["set-cookie"]) {
-        this.#cookie = extractCookie(res.headers.raw()["set-cookie"]);
+        const setCookieHeaders = res.headers.raw()["set-cookie"];
+        for (const cookie of setCookieHeaders) {
+          await this.#cookieJar.setCookie(cookie, url);
+        }
       }
       return jsonRes.query.tokens;
     } catch (error) {
       logger.error(`Error in #getToken: ${error.message}`, error);
+    }
+  }
+
+  async #checkToken(params) {
+    const checkParams = { action: "checktoken", ...params };
+    if (!checkParams.type) {
+      checkParams.type = "csrf";
+    }
+    if (!checkParams.token) {
+      checkParams.token = this.token[checkParams.type + "token"] || await this.#getToken(checkParams.type);
+    }
+
+    const { checktoken, error } = await this.wikiGet(checkParams);
+
+    if (!checktoken || !checktoken.result) {
+      logger.error("Failed to validate token");
+    }
+    if (checktoken.result !== "valid") {
+      this.token = await this.#getToken(checkParams.type);
+    }
+
+    if (error) {
+      logger.error(`Error in #checkToken: ${error.message}`, error);
+      throw new Error(`Error in #checkToken: ${error.message}`);
     }
   }
 
@@ -308,6 +345,8 @@ class WikiClient {
     if (!this.isLoggedIn) {
       await this.login();
     }
+
+    await this.#checkToken();
 
     const editParams = Object.fromEntries(
       Object.entries({
