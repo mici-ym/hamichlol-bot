@@ -151,7 +151,37 @@ class WikiClient {
         }
       }
 
-      return await response.json();
+      const jsonResponse = await response.json();
+      
+      // Check for MediaWiki API errors (like maxlag)
+      if (jsonResponse.error) {
+        logger.warn(`MediaWiki API error received:`, {
+          code: jsonResponse.error.code,
+          info: jsonResponse.error.info,
+          retries: retries,
+          maxRetries: this.maxRetries
+        });
+        
+        if (jsonResponse.error.code === 'maxlag' && retries < this.maxRetries) {
+          const lagTime = jsonResponse.error.lag || 5; // Default to 5 seconds if lag time not specified
+          logger.info(`MaxLag error: database lag detected (${jsonResponse.error.lag}s). Waiting ${lagTime} seconds before retry ${retries + 1}/${this.maxRetries}...`);
+          await new Promise((resolve) => setTimeout(resolve, lagTime * 1000));
+          return this.#request(method, params, retries + 1);
+        }
+        
+        // For other rate limit related errors
+        if (['ratelimited', 'actionthrottledtext'].includes(jsonResponse.error.code) && retries < this.maxRetries) {
+          const waitTime = 30; // Default wait time for rate limit
+          logger.info(`Rate limit error (${jsonResponse.error.code}): waiting ${waitTime} seconds before retry ${retries + 1}/${this.maxRetries}...`);
+          await new Promise((resolve) => setTimeout(resolve, waitTime * 1000));
+          return this.#request(method, params, retries + 1);
+        }
+        
+        // If we can't retry or this isn't a retryable error, we'll still return the response
+        // The calling function can decide how to handle the error
+      }
+      
+      return jsonResponse;
     } catch (error) {
       logger.error(`Error in #request: ${error.message}`, error);
       throw error;
@@ -264,6 +294,7 @@ class WikiClient {
         headers: {
           cookie: cookieString || "",
         },
+        agent: this.proxyAgent || undefined,
       });
       const jsonRes = await res.json();
 
