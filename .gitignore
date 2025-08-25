@@ -1,7 +1,30 @@
 /node_modules/
 /src/Wiki
 /.github/workflows/Deploy-to-Server.yml
-/logs/
-/src/logging.js
+coverage/
+logs/
+src/logging.js
 *.log
 *.env
+
+# VS Code settings (optional - remove if you want to share workspace settings)
+.vscode/
+
+# Copilot ignore file (optional)
+.copilotignore
+
+# Common folders to ignore
+temp/
+tmp/
+dist/
+build/
+.cache/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
