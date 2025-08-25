@@ -32,12 +32,12 @@ class WikiClient {
    * @param {boolean} [options.withLogedIn=true] - Whether to login automatically before requests
    * @param {string} [options.userAgent="hamichlol-bot"] - User agent string for requests
    * @param {Object} [options.proxyOptions] - Proxy configuration object (e.g. { type: 'socks', host: '127.0.0.1', port: 1080 })
-   * @param {string} [wikiUrl] - @deprecated Passing a string as the first parameter is deprecated. Use an options object instead.
-   * @param {number} [maxlag] - @deprecated For backward compatibility only.
-   * @param {number} [maxRetries] - @deprecated For backward compatibility only.
-   * @param {boolean} [withLogedIn] - @deprecated For backward compatibility only.
-   * @param {string} [userAgent] - @deprecated For backward compatibility only.
-   * @param {Object} [proxyOptions] - @deprecated For backward compatibility only.
+   * @param {string} [wikiUrl] -  Passing a string as the first parameter is deprecated. Use an options object instead.
+   * @param {number} [maxlag] -  For backward compatibility only.
+   * @param {number} [maxRetries] -  For backward compatibility only.
+   * @param {boolean} [withLogedIn] -  For backward compatibility only.
+   * @param {string} [userAgent] -  For backward compatibility only.
+   * @param {Object} [proxyOptions] -  For backward compatibility only.
    *
    * @example
    * // Recommended usage:
@@ -316,7 +316,7 @@ class WikiClient {
       checkParams.type = "csrf";
     }
     if (!checkParams.token) {
-      checkParams.token = this.token[checkParams.type + "token"] || await this.#getToken(checkParams.type);
+      checkParams.token = this.token?.[checkParams.type + "token"] || await this.#getToken(checkParams.type);
     }
 
     const { checktoken, error } = await this.wikiGet(checkParams);

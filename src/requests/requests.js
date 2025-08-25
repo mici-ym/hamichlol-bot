@@ -25,11 +25,11 @@ export class Requests extends WikiClient {
    * Creates a Requests client for MediaWiki API.
    *
    * @param {RequestsOptions|string} options - Options object for configuration, or wikiUrl string for backward compatibility
-   * @param {number} [maxlag] - @deprecated Maximum lag (for backward compatibility)
-   * @param {number} [maxRetries] - @deprecated Maximum retries (for backward compatibility)
-   * @param {boolean} [withLogedIn] - @deprecated Whether to login automatically (for backward compatibility)
-   * @param {string} [userAgent] - @deprecated User agent string (for backward compatibility)
-   * @param {Object} [proxyOptions] - @deprecated Proxy configuration (for backward compatibility)
+   * @param {number} [maxlag] - Maximum lag (for backward compatibility)
+   * @param {number} [maxRetries] - Maximum retries (for backward compatibility)
+   * @param {boolean} [withLogedIn] - Whether to login automatically (for backward compatibility)
+   * @param {string} [userAgent] - User agent string (for backward compatibility)
+   * @param {Object} [proxyOptions] - Proxy configuration (for backward compatibility)
    *
    * @example
    * // Recommended usage:
