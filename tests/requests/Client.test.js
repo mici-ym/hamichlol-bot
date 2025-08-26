@@ -1,4 +1,4 @@
-import Client from '../requests/Client.js';
+import Client from '../../src/requests/Client.js';
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 
 describe('Client.edit error handling', () => {

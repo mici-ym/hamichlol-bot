@@ -1,3 +1,5 @@
+import fetch from "node-fetch";
+import logger from "../logger.js";
 /**
  * Retrieves the value of the "wikibase_item" property from the given data object.
  * If the property does not exist, an empty string is returned.
@@ -36,9 +38,9 @@ function getProperties(properties, type) {
  * @param {boolean} options.exist - Whether page already exists
  * @param {number|null} options.sectionNum - Section number being edited
  * @param {string} options.sectionTitle - Title of section being edited
- * @returns {Object} Object containing processed text and edit summary
+ * @returns {Promise<Object>} Object containing processed text and edit summary
  */
-function processWikiContent(wikiContent, options) {
+async function processWikiContent(wikiContent, options) {
   const { currentPage, bot, exist, sectionNum, sectionTitle } = options;
   const { title: page } = wikiContent;
 
@@ -60,10 +62,11 @@ function processWikiContent(wikiContent, options) {
 
   let text = wikiContent.text;
   if (bot) {
-    const tionary = require("./mw-import-tionary.js");
-    text = tionary(wikiContent, bot);
+    const { default: botPagesFunc } = await import("./bot_pages.js");
+    const tionaryFunc = botPagesFunc();
+    text = tionaryFunc(wikiContent, bot);
   }
-  const replacementResult = applyReplacements(text);
+  const replacementResult = await applyReplacements(text);
   text = replacementResult.text;
   const redirect = /#הפניה|#REDIRECT/.test(text);
   const isMainNamespace = !page.includes(":");
@@ -100,9 +103,27 @@ function processWikiContent(wikiContent, options) {
  * @param {Array} replacements - Array of {from, to} replacement objects
  * @returns {Object} - {text, summary} with replacements applied and editorial summary
  */
-function applyReplacements(text, replacements = []) {
+async function applyReplacements(text, replacements = []) {
   console.time("replace");
-  const defaultReplacements = import("https://www.hamichlol.org.il/w/index.php?title=%D7%9E%D7%93%D7%99%D7%94_%D7%95%D7%99%D7%A7%D7%99:mw-import-replacements.json&action=raw", { with: { type: "json" } });
+
+  // Fetch default replacements using node-fetch
+  let defaultReplacements = [];
+  try {
+    const response = await fetch(
+      "https://www.hamichlol.org.il/w/index.php?title=%D7%9E%D7%93%D7%99%D7%94_%D7%95%D7%99%D7%A7%D7%99:mw-import-replacements.json&action=raw"
+    );
+    if (response.ok) {
+      defaultReplacements = await response.json();
+    } else {
+      logger.error(
+        "Failed to fetch default replacements: HTTP",
+        response.status
+      );
+    }
+  } catch (error) {
+    logger.error("Failed to fetch default replacements:", error);
+  }
+
   const allReplacements = [...defaultReplacements, ...replacements];
   let hasReplacements = false;
   for (const { from, to } of allReplacements) {
@@ -110,7 +131,7 @@ function applyReplacements(text, replacements = []) {
     if (regex.test(text)) {
       text = text.replace(regex, to);
       hasReplacements = true;
-      console.log(from);
+      logger.info(`Replaced "${from}" with "${to}"`);
     }
   }
   console.timeEnd("replace");
