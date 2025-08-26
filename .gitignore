@@ -5,3 +5,4 @@
 /src/logging.js
 *.log
 *.env
+/coverage/**
