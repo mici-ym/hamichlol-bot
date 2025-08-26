@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 import dotenv from "dotenv";
+import { CookieJar } from "tough-cookie";
 dotenv.config();
-import { extractCookie } from "./utils/cookie.js";
 import logger from "../logger.js";
 
 /**
@@ -13,25 +13,62 @@ import logger from "../logger.js";
  */
 class WikiClient {
   wikiUrl;
-  #cookie = "";
   userName = process.env.MC_USER || "";
   #password = process.env.MC_PASSWORD || "";
   token = "";
   isLoggedIn = false;
+  #cookieJar;
 
   /**
+   * Creates a MediaWiki API client.
    *
-   * @param {String} wikiUrl
+   * @param {Object} options - Options object for configuration (recommended)
+   * @param {string} options.wikiUrl - The URL of the wiki API (required)
+   * @param {number} [options.maxlag=5] - Maximum lag parameter for MediaWiki API
+   * @param {number} [options.maxRetries=3] - Maximum number of retries for failed requests
+   * @param {boolean} [options.withLogedIn=true] - Whether to login automatically before requests
+   * @param {string} [options.userAgent="hamichlol-bot"] - User agent string for requests
+   * @param {string} [wikiUrl] -  Passing a string as the first parameter is deprecated. Use an options object instead.
+   * @param {number} [maxlag] -  For backward compatibility only.
+   * @param {number} [maxRetries] -  For backward compatibility only.
+   * @param {boolean} [withLogedIn] -  For backward compatibility only.
+   * @param {string} [userAgent] -  For backward compatibility only.
+   * @param {Object} [proxyOptions] -  For backward compatibility only.
+   *
+   * @example
+   * // Recommended usage:
+   * const client = new WikiClient({
+   *   wikiUrl: "https://www.hamichlol.org.il/w/api.php",
+   *   maxlag: 5,
+   *   maxRetries: 3,
+   *   withLogedIn: true,
+   *   userAgent: "my-bot",
+   * });
+   *
+   * // Deprecated usage:
+   * const client = new WikiClient("https://www.hamichlol.org.il/w/api.php");
    */
-  constructor(wikiUrl, maxlag = 5, maxRetries = 3, withLogedIn = true) {
-    if (!wikiUrl) {
+  constructor(options, maxlag, maxRetries, withLogedIn, userAgent, proxyOptions) {
+    // Backward compatibility: if first param is string, treat as old signature
+    if (typeof options === 'string') {
+      options = {
+        wikiUrl: options,
+        maxlag,
+        maxRetries,
+        withLogedIn,
+        userAgent,
+      };
+    }
+    if (!options || !options.wikiUrl) {
       throw new Error("you didn't pass the url of your wiki");
     }
-    this.wikiUrl = wikiUrl;
+    this.wikiUrl = options.wikiUrl;
     this.isLoggedIn = false;
-    this.withLogedIn = withLogedIn;
-    this.maxlag = maxlag;
-    this.maxRetries = maxRetries;
+    this.withLogedIn = options.withLogedIn !== undefined ? options.withLogedIn : true;
+    this.maxlag = options.maxlag !== undefined ? options.maxlag : 5;
+    this.maxRetries = options.maxRetries !== undefined ? options.maxRetries : 3;
+    this.userAgent = options.userAgent || "hamichlol-bot";
+    this.#cookieJar = new CookieJar();
   }
 
   /**
@@ -51,25 +88,30 @@ class WikiClient {
     }
     let response;
     try {
+      // Get cookies for this URL
+      const cookieString = await this.#cookieJar.getCookieString(url.toString());
+      
+      const fetchOptions = {
+        headers: {
+          "user-agent": this.userAgent || "hamichlol-bot",
+          cookie: cookieString,
+        },
+      };
       if (method === "GET") {
         url.search = searchParams;
-        response = await fetch(url, {
-          headers: {
-            "user-agent": this.userAgent || "hamichlol-bot",
-            cookie: this.#cookie,
-          },
-        });
+        response = await fetch(url, fetchOptions);
       } else {
-        response = await fetch(url, {
+        const postOptions = {
+          ...fetchOptions,
           headers: {
+            ...fetchOptions.headers,
             "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "user-agent": this.userAgent || "hamichlol-bot",
-            cookie: this.#cookie,
           },
           method: "POST",
           credentials: "include",
           body: searchParams,
-        });
+        };
+        response = await fetch(url, postOptions);
       }
       if (!response.ok) {
         const retry = parseInt(response.headers.get("retry-after"));
@@ -89,10 +131,46 @@ class WikiClient {
         throw error;
       }
       if (params.action === "login") {
-        this.#cookie = extractCookie(response.headers.raw()["set-cookie"]);
+        // Store cookies from login response
+        const setCookieHeaders = response.headers.raw()["set-cookie"];
+        if (setCookieHeaders) {
+          for (const cookie of setCookieHeaders) {
+            await this.#cookieJar.setCookie(cookie, url.toString());
+          }
+        }
       }
 
-      return await response.json();
+      const jsonResponse = await response.json();
+      
+      // Check for MediaWiki API errors (like maxlag)
+      if (jsonResponse.error) {
+        logger.warn(`MediaWiki API error received:`, {
+          code: jsonResponse.error.code,
+          info: jsonResponse.error.info,
+          retries: retries,
+          maxRetries: this.maxRetries
+        });
+        
+        if (jsonResponse.error.code === 'maxlag' && retries < this.maxRetries) {
+          const lagTime = jsonResponse.error.lag || 5; // Default to 5 seconds if lag time not specified
+          logger.info(`MaxLag error: database lag detected (${jsonResponse.error.lag}s). Waiting ${lagTime} seconds before retry ${retries + 1}/${this.maxRetries}...`);
+          await new Promise((resolve) => setTimeout(resolve, lagTime * 1000));
+          return this.#request(method, params, retries + 1);
+        }
+        
+        // For other rate limit related errors
+        if (['ratelimited', 'actionthrottledtext'].includes(jsonResponse.error.code) && retries < this.maxRetries) {
+          const waitTime = 30; // Default wait time for rate limit
+          logger.info(`Rate limit error (${jsonResponse.error.code}): waiting ${waitTime} seconds before retry ${retries + 1}/${this.maxRetries}...`);
+          await new Promise((resolve) => setTimeout(resolve, waitTime * 1000));
+          return this.#request(method, params, retries + 1);
+        }
+        
+        // If we can't retry or this isn't a retryable error, we'll still return the response
+        // The calling function can decide how to handle the error
+      }
+      
+      return jsonResponse;
     } catch (error) {
       logger.error(`Error in #request: ${error.message}`, error);
       throw error;
@@ -197,22 +275,50 @@ class WikiClient {
    */
   async #getToken(type) {
     try {
-      const res = await fetch(
-        `${this.wikiUrl}?action=query&format=json&meta=tokens&type=${type}`,
-        {
-          headers: {
-            cookie: this.#cookie || "",
-          },
-        }
-      );
+      const url = `${this.wikiUrl}?action=query&format=json&meta=tokens&type=${type}`;
+      const cookieString = await this.#cookieJar.getCookieString(url);
+      
+      const res = await fetch(url, {
+        headers: {
+          cookie: cookieString || "",
+        },
+        agent: this.proxyAgent || undefined,
+      });
       const jsonRes = await res.json();
 
       if (res.headers.raw()["set-cookie"]) {
-        this.#cookie = extractCookie(res.headers.raw()["set-cookie"]);
+        const setCookieHeaders = res.headers.raw()["set-cookie"];
+        for (const cookie of setCookieHeaders) {
+          await this.#cookieJar.setCookie(cookie, url);
+        }
       }
       return jsonRes.query.tokens;
     } catch (error) {
       logger.error(`Error in #getToken: ${error.message}`, error);
+    }
+  }
+
+  async #checkToken(params) {
+    const checkParams = { action: "checktoken", ...params };
+    if (!checkParams.type) {
+      checkParams.type = "csrf";
+    }
+    if (!checkParams.token) {
+      checkParams.token = this.token?.[checkParams.type + "token"] || await this.#getToken(checkParams.type);
+    }
+
+    const { checktoken, error } = await this.wikiGet(checkParams);
+
+    if (!checktoken || !checktoken.result) {
+      logger.error("Failed to validate token");
+    }
+    if (checktoken.result !== "valid") {
+      this.token = await this.#getToken(checkParams.type);
+    }
+
+    if (error) {
+      logger.error(`Error in #checkToken: ${error.message}`, error);
+      throw new Error(`Error in #checkToken: ${error.message}`);
     }
   }
 
@@ -258,6 +364,8 @@ class WikiClient {
     if (!this.isLoggedIn) {
       await this.login();
     }
+
+    await this.#checkToken();
 
     const editParams = Object.fromEntries(
       Object.entries({

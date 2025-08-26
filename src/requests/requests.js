@@ -1,3 +1,13 @@
+
+/**
+ * @typedef {Object} RequestsOptions
+ * @property {string} wikiUrl - The URL of the wiki API (required)
+ * @property {number} [maxlag=5] - Maximum lag parameter for MediaWiki API
+ * @property {number} [maxRetries=3] - Maximum number of retries for failed requests
+ * @property {boolean} [withLogedIn=true] - Whether to login automatically before requests
+ * @property {string} [userAgent="hamichlol-bot"] - User agent string for requests
+ */
+
 import WikiClient from "./Client.js";
 import { mapIdsToNames, mergeResults } from "./utils/DataProcessor.js";
 import logger from "../logger.js";
@@ -10,12 +20,48 @@ import logger from "../logger.js";
  */
 export class Requests extends WikiClient {
   wikiUrl = "";
-  constructor(wikiUrl) {
+  /**
+   * Creates a Requests client for MediaWiki API.
+   *
+   * @param {RequestsOptions|string} options - Options object for configuration, or wikiUrl string for backward compatibility
+   * @param {number} [maxlag] - Maximum lag (for backward compatibility)
+   * @param {number} [maxRetries] - Maximum retries (for backward compatibility)
+   * @param {boolean} [withLogedIn] - Whether to login automatically (for backward compatibility)
+   * @param {string} [userAgent] - User agent string (for backward compatibility)
+   *
+   * @example
+   * // Recommended usage:
+   * const client = new Requests({
+   *   wikiUrl: "https://www.hamichlol.org.il/w/api.php",
+   *   maxlag: 5,
+   *   maxRetries: 3,
+   *   withLogedIn: true,
+   *   userAgent: "my-bot",
+   * });
+   *
+   * // Backward compatible usage:
+   * const client = new Requests("https://www.hamichlol.org.il/w/api.php");
+   */
+  constructor(options, maxlag, maxRetries, withLogedIn, userAgent) {
+    // Backward compatibility: if first param is string, treat as old signature
+    let wikiUrl;
+    if (typeof options === 'string') {
+      wikiUrl = options;
+      options = {
+        wikiUrl,
+        maxlag,
+        maxRetries,
+        withLogedIn,
+        userAgent,
+      };
+    } else {
+      wikiUrl = options?.wikiUrl;
+    }
     if (!wikiUrl) {
       logger.error("you didn't pass the url of your wiki");
       throw new Error("you didn't pass the url of your wiki");
     }
-    super(wikiUrl);
+    super(options);
     this.wikiUrl = wikiUrl;
   }
 
