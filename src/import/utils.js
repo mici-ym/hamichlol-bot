@@ -63,7 +63,7 @@ async function processWikiContent(wikiContent, options) {
   let text = wikiContent.text;
   if (bot) {
     const { default: createTionaryPage } = await import("./bot_pages.js");
-    text = createTionaryPage(wikiContent, bot);
+    text = await createTionaryPage(wikiContent, bot);
   }
   const replacementResult = await applyReplacements(text);
   text = replacementResult.text;
@@ -103,10 +103,8 @@ async function processWikiContent(wikiContent, options) {
  * @returns {Object} - {text, summary} with replacements applied and editorial summary
  */
 async function applyReplacements(text, replacements = []) {
-  console.time("replace");
-
   // Fetch default replacements using node-fetch
-  let defaultReplacements = [];
+  let defaultReplacements = globalThis.defaultReplacements || [];
   try {
     const { parse } = await getRequestsInstance("hamichlol").parse({
       page: "מדיה ויקי:Gadget-mw-import-replacements.json",
@@ -116,6 +114,7 @@ async function applyReplacements(text, replacements = []) {
       throw new Error("Failed to fetch default replacements");
     }
     defaultReplacements = JSON.parse(parse.wikitext["*"]);
+    globalThis.defaultReplacements = defaultReplacements;
   } catch (error) {
     logger.error("Failed to fetch default replacements:", error);
   }
@@ -130,7 +129,6 @@ async function applyReplacements(text, replacements = []) {
       logger.info(`Replaced "${from}" with "${to}"`);
     }
   }
-  console.timeEnd("replace");
   return {
     text,
     hasReplacements,

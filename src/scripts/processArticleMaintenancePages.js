@@ -118,8 +118,14 @@ async function processArticleMaintenancePages() {
           case "music":
             classification = "מוזיקה";
             break;
+          case "musicians":
+            classification = "מוזיקאים";
+            break;
           case "tv":
             classification = "טלוויזיה";
+            break;
+          case "actors":
+            classification = "שחקנים";
             break;
           default:
             classification = null;
