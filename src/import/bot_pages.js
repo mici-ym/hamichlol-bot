@@ -1,6 +1,6 @@
 import templateCategories from "./check/template-categories.json" with {type: 'json'};
 import logger from "../logger.js";
-import { getProperties } from "./utils.js";
+import { getProperties, applyReplacements } from "./utils.js";
 
 /**
  * Creates a Tionary page from provided data and classification.
@@ -11,8 +11,8 @@ import { getProperties } from "./utils.js";
 export default function createTionaryPage(data, classification) {
   try {
     if (!data || !data.text) {
-      logger.error('Invalid data provided to createTionaryPage');
-      throw new Error('Invalid data: missing text property');
+      logger.error("Invalid data provided to createTionaryPage");
+      throw new Error("Invalid data: missing text property");
     }
 
     let text = data.text;
@@ -23,14 +23,27 @@ export default function createTionaryPage(data, classification) {
     } else {
       text = sections[0];
     }
-    
+
+    const replacements = [
+      {
+        from: /(?<!סמל\s*=\s*)\[\[(?:File|קובץ):([^|\]]+)(?:\|(?:[^\[\]]+|\[\[[^\[\]]*\]\])*)*\]\]/,
+        to: ``,
+      },
+      { from: /{{(?:אין תמונה|תמונה להחלפה)[^}]*}}/, to: `` },
+      { from: /\|\s?תמונה\s?=[^{}\n|]*\n?/, to: "" },
+      { from: /\|\s?דגימת קול\s?=[^{}\n|]*\n?/, to: "" },
+    ];
+    text = applyReplacements(text, replacements);
+
     text = defaultsortAndCategories(text, data);
     text = text += `\n{{בוט ${classification}}}`;
-    
-    logger.info(`Successfully created Tionary page with classification: ${classification}`);
+
+    logger.info(
+      `Successfully created Tionary page with classification: ${classification}`
+    );
     return text;
   } catch (error) {
-    logger.error('Error in createTionaryPage:', error);
+    logger.error("Error in createTionaryPage:", error);
     throw error;
   }
 }
@@ -42,28 +55,28 @@ export default function createTionaryPage(data, classification) {
  * @returns {string} - Text with defaultsort and categories added
  */
 function defaultsortAndCategories(text, data) {
-  if (!text || typeof text !== 'string') {
-    return '';
+  if (!text || typeof text !== "string") {
+    return "";
   }
 
   try {
     let processedText = text;
-    
+
     // Get defaultsort property
     if (data.properties) {
       const defaultsort = getProperties(data.properties, "defaultsort");
-      
+
       // Add footnotes if needed
       if (/<\/ref>|{{הערה\|/.test(processedText)) {
         processedText += "\n===הערות שוליים===\n{{הערות שוליים}}";
       }
-      
+
       // Add defaultsort
       if (defaultsort) {
         processedText += `\n{{מיון רגיל:${defaultsort}}}`;
       }
     }
-    
+
     // Add categories
     if (data.text) {
       const categoryRegex = /\[\[קטגוריה:(.+)\]\]/g;
@@ -72,10 +85,10 @@ function defaultsortAndCategories(text, data) {
         processedText += `\n${categories.join("\n") || ""}`;
       }
     }
-    
+
     return processedText;
   } catch (error) {
-    logger.error('Error in defaultsortAndCategories:', error);
+    logger.error("Error in defaultsortAndCategories:", error);
     return text; // Return original text if error occurs
   }
 }
@@ -97,12 +110,14 @@ export function botPages() {
  * @returns {(Array|string|boolean)} - The found template categories if there are matches, false otherwise.
  */
 export function detectTemplateCategory(text) {
-  if (!text || typeof text !== 'string') {
+  if (!text || typeof text !== "string") {
     return false;
   }
 
   if (!templateCategories || !templateCategories.templateCategories) {
-    logger.error("Invalid templateCategories configuration: templateCategories not found");
+    logger.error(
+      "Invalid templateCategories configuration: templateCategories not found"
+    );
     return false;
   }
 
@@ -131,6 +146,8 @@ export function detectTemplateCategory(text) {
  * @returns {(Array|boolean)} - The found word list(s) if there are matches, false otherwise.
  */
 export function checkBot(text) {
-  logger.warn("checkBot function is deprecated. Use detectTemplateCategory instead.");
+  logger.warn(
+    "checkBot function is deprecated. Use detectTemplateCategory instead."
+  );
   return detectTemplateCategory(text);
 }
