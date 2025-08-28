@@ -1,4 +1,4 @@
-import fetch from "node-fetch";
+import { getRequestsInstance } from "../requests/requests.js";
 import logger from "../logger.js";
 /**
  * Retrieves the value of the "wikibase_item" property from the given data object.
@@ -62,8 +62,7 @@ async function processWikiContent(wikiContent, options) {
 
   let text = wikiContent.text;
   if (bot) {
-    const { createTionaryPage } = await import("./bot_pages.js");
-    createTionaryPage();
+    const { default: createTionaryPage } = await import("./bot_pages.js");
     text = createTionaryPage(wikiContent, bot);
   }
   const replacementResult = await applyReplacements(text);
@@ -109,17 +108,14 @@ async function applyReplacements(text, replacements = []) {
   // Fetch default replacements using node-fetch
   let defaultReplacements = [];
   try {
-    const response = await fetch(
-      "https://www.hamichlol.org.il/w/index.php?title=%D7%9E%D7%93%D7%99%D7%94_%D7%95%D7%99%D7%A7%D7%99:mw-import-replacements.json&action=raw"
-    );
-    if (response.ok) {
-      defaultReplacements = await response.json();
-    } else {
-      logger.error(
-        "Failed to fetch default replacements: HTTP",
-        response.status
-      );
+    const { parse } = await getRequestsInstance("hamichlol").parse({
+      page: "מדיה ויקי:Gadget-mw-import-replacements.json",
+    });
+    if (!parse) {
+      logger.error("Failed to fetch default replacements: parse not found");
+      throw new Error("Failed to fetch default replacements");
     }
+    defaultReplacements = JSON.parse(parse.wikitext["*"]);
   } catch (error) {
     logger.error("Failed to fetch default replacements:", error);
   }

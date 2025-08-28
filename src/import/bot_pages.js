@@ -8,7 +8,7 @@ import { getProperties } from "./utils.js";
  * @param {string} classification - The classification for the bot template
  * @returns {string} - The processed text for the page
  */
-function createTionaryPage(data, classification) {
+export default function createTionaryPage(data, classification) {
   try {
     if (!data || !data.text) {
       logger.error('Invalid data provided to createTionaryPage');
@@ -84,7 +84,7 @@ function defaultsortAndCategories(text, data) {
  * Returns the createTionaryPage function for creating bot pages.
  * @returns {Function} The createTionaryPage function
  */
-export default function botPages() {
+export function botPages() {
   logger.info("Using local createTionaryPage implementation");
   return createTionaryPage;
 }
