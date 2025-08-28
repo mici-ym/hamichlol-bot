@@ -8,7 +8,7 @@ import { getProperties, applyReplacements } from "./utils.js";
  * @param {string} classification - The classification for the bot template
  * @returns {string} - The processed text for the page
  */
-export default function createTionaryPage(data, classification) {
+export default async function createTionaryPage(data, classification) {
   try {
     if (!data || !data.text) {
       logger.error("Invalid data provided to createTionaryPage");
@@ -18,10 +18,15 @@ export default function createTionaryPage(data, classification) {
     let text = data.text;
     const sections = text.split(/==.+==/g);
 
-    if (sections.length < 2) {
-      text = sections[0].split("\n\n")[0];
-    } else {
-      text = sections[0];
+    // Take only the first section (before first header) if multiple sections exist
+    if (sections.length > 1) {
+      text = sections[0].trim();
+    }
+
+    // If text is very long and no sections, take only the first paragraph
+    if (sections.length === 1 && text.length > 2000) {
+      const paragraphs = text.split("\n\n");
+      text = paragraphs[0];
     }
 
     const replacements = [
@@ -33,7 +38,7 @@ export default function createTionaryPage(data, classification) {
       { from: /\|\s?תמונה\s?=[^{}\n|]*\n?/, to: "" },
       { from: /\|\s?דגימת קול\s?=[^{}\n|]*\n?/, to: "" },
     ];
-    text = applyReplacements(text, replacements);
+    text = await applyReplacements(text, replacements);
 
     text = defaultsortAndCategories(text, data);
     text = text += `\n{{בוט ${classification}}}`;
