@@ -123,7 +123,11 @@ async function processArticleMaintenancePages() {
             classification = "טלוויזיה";
             break;
           default:
-            classification = "כללי";
+            classification = null;
+        }
+        if (!classification) {
+          logger.info(`דף ${title}: דולג - לא נמצא סיווג מתאים`);
+          continue;
         }
 
         // הכנת האובייקט data עבור createTionaryPage
@@ -141,7 +145,10 @@ async function processArticleMaintenancePages() {
           bot: classification,
         };
 
-        const {text, summary} = await processWikiContent(wikipediaData, processData);
+        const { text, summary } = await processWikiContent(
+          wikipediaData,
+          processData
+        );
 
         // שלב 5: שמירה במכלול
         const { edit, error } = await hamichlol.edit({
