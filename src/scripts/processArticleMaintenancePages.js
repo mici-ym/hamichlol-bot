@@ -50,7 +50,6 @@ async function processArticleMaintenancePages() {
     for (const [pageId, pageData] of Object.entries(pagesWithTemplate)) {
       const title = pageData.title;
 
-      //בדיקת מילים
       try {
         // בדיקה האם הדף כבר נערך מקומית
         const localEditCheck = await checkLocalEdits(title);
@@ -139,7 +138,7 @@ async function processArticleMaintenancePages() {
         };
 
         const processData = {
-          currentPage: true,
+          currentPage: title,
           page: title,
           exist: true,
           bot: classification,
