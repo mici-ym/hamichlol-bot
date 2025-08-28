@@ -141,13 +141,13 @@ async function processArticleMaintenancePages() {
           bot: classification,
         };
 
-        const processedContent = processWikiContent(wikipediaData, processData);
+        const {text, summary} = await processWikiContent(wikipediaData, processData);
 
         // שלב 5: שמירה במכלול
         const { edit, error } = await hamichlol.edit({
           title: title,
-          text: processedContent,
-          summary: `המרה לערך מילוני מתוכן ויקיפדיה (${classification})`,
+          text,
+          summary,
           tags: "פתיחת ערך חסום|auto-update",
         });
 
