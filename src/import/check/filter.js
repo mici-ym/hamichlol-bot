@@ -8,12 +8,12 @@ import lists from "./filter-lists.json" with {type: 'json'};
  */
 async function checkWord(text) {
   const foundWords = {};
-  const { colorMapping } = await import(
+  /*const { colorMapping } = await import(
     encodeURIComponent(
       "https://www.hamichlol.org.il/w/index.php?title=מדיה_ויקי:Gadget-checkWords.json&action=raw",
       { with: { type: "json" } }
     )
-  );
+  );*/
   Object.entries(lists.wordesOfFilter).forEach(([listName, words]) => {
     words.forEach((word) => {
       const regex = new RegExp(word, "gi");
@@ -32,7 +32,7 @@ async function checkWord(text) {
     });
   });
 
-  Object.entries(colorMapping).forEach(([name, list]) => {
+  /*Object.entries(colorMapping).forEach(([name, list]) => {
     const words = list.regexs;
     words.forEach((word) => {
       const regex = new RegExp(word.pattern, "gi");
@@ -49,7 +49,7 @@ async function checkWord(text) {
         });
       }
     });
-  });
+  });*/
 
   return Object.keys(foundWords).length > 0 ? foundWords : false;
 }

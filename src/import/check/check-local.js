@@ -3,11 +3,11 @@ import getRequestsInstance from "../../requests/requests.js";
 const request = getRequestsInstance("https://www.hamichlol.org.il/w/api.php");
 /**
  * Check if a article has been edited locally or filtered based on comments.
- * 
+ *
  * @param {string} title - The title of the article to check.
- * @returns {boolean|string} - Returns false if the article does not exist on the local site, "edited locally" if the article was edited locally, "Content filter" if article content has been filtered, or "Image filter" if article images have been filtered.
+ * @returns {Promise<boolean|string>} - Returns false if the article does not exist on the local site, "edited locally" if the article was edited locally, "Content filter" if article content has been filtered, or "Image filter" if article images have been filtered.
  */
-export async function checkWord(title) {
+export async function checkLocalEdits(title) {
   const arrCommentAspaclarya = ["הסרת תוכן", "גיור מונח", "עריכה יהודית"];
   const arrCommentPhotos = ["הסרת תמונה", "החלפת תמונה"];
   const queryPage = await request.queryPages({
