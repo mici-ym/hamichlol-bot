@@ -1,17 +1,15 @@
 import { getRequestsInstance } from "../requests/requests.js";
 import { detectTemplateCategory } from "../import/bot_pages.js";
-import botPages from "../import/bot_pages.js";
 import checkWords from "../import/check/filter.js";
 import { checkLocalEdits } from "../import/check/check-local.js";
+import { processWikiContent } from "../import/utils.js";
 import logger from "../logger.js";
+import path from "path";
 
 // הגדרת לקוחות למכלול ולויקיפדיה
 const hamichlol = getRequestsInstance("hamichlol");
 const wikipedia = getRequestsInstance("wiki");
 wikipedia.withLogedIn = false;
-
-// פונקציה ליצירת דף מילוני מטקסט ויקיפדיה
-const createTionaryPage = botPages();
 
 /**
  * סקריפט לעיבוד דפים עם תבנית "דף לטיפול במרחב הערכים"
@@ -37,11 +35,7 @@ async function processArticleMaintenancePages() {
     // שלב 1: איתור דפים עם התבנית
     logger.info("מחפש דפים עם התבנית...");
     const pagesWithTemplate = await hamichlol.embeddedin({
-      title: "תבנית:דף לטיפול במרחב הערכים",
-      options: {
-        einamespace: 0, // רק מרחב הערכים
-        eilimit: "max",
-      },
+      title: "תבנית:דף לטיפול",
     });
 
     if (!pagesWithTemplate || Object.keys(pagesWithTemplate).length === 0) {
@@ -55,7 +49,6 @@ async function processArticleMaintenancePages() {
     // שלב 2: בדיקת כל דף
     for (const [pageId, pageData] of Object.entries(pagesWithTemplate)) {
       const title = pageData.title;
-      logger.info(`מעבד דף: ${title}`);
 
       //בדיקת מילים
       try {
@@ -66,120 +59,107 @@ async function processArticleMaintenancePages() {
             title,
             reason: `נערך מקומית: ${localEditCheck}`,
           });
-          logger.info(`דף ${title} דולג - ${localEditCheck}`);
+          logger.info(`דף ${title}: דולג - ${localEditCheck}`);
           continue;
         }
 
         // שלב 3: טעינת טקסט מויקיפדיה
         logger.info(`טוען תוכן מויקיפדיה עבור: ${title}`);
-        const wikipediaData = await wikipedia.queryPages({
-          titles: title,
-          options: {
-            prop: "revisions|prop",
-            rvprop: "content",
-            rvslots: "main",
-            prop: "wikibase-item|defaultsort",
-          },
+        const { parse: wikipediaParse } = await wikipedia.parse({
+          page: title,
+          prop: `revid|properties|wikitext`,
           useIdsOrTitles: "titles",
         });
 
-        if (!wikipediaData[title] || !wikipediaData[title].revisions) {
+        if (!wikipediaParse || !wikipediaParse.wikitext) {
           processLog.skipped.push({
             title,
             reason: "לא נמצא בויקיפדיה",
           });
-          logger.info(`דף ${title} דולג - לא נמצא בויקיפדיה`);
+          logger.info(`דף ${title}: דולג - לא נמצא בויקיפדיה`);
           continue;
         }
 
-        const wikipediaContent =
-          wikipediaData[title].revisions[0].slots.main.content;
+        const content = wikipediaParse.wikitext["*"];
 
         // בדיקה נוספת של התוכן מויקיפדיה
-        const wikipediaTemplateCheck = detectTemplateCategory(wikipediaContent);
+        const wikipediaTemplateCheck = detectTemplateCategory(content);
         if (!wikipediaTemplateCheck) {
           processLog.skipped.push({
             title,
-            reason: "לא נמצאו תבניות מסיווגות בתוכן הויקיפדיה",
+            reason: "לא נמצאו תבניות תרבות בתוכן הויקיפדיה",
           });
-          logger.info(`דף ${title} דולג - לא נמצאו תבניות מסיווגות בויקיפדיה`);
+          logger.info(`דף ${title}: דולג - לא נמצאו תבניות תרבות בויקיפדיה`);
           continue;
         }
 
         // בדיקת מילים בתוכן הויקיפדיה
-        const wordCheckResult = checkWords(wikipediaContent);
+        const wordCheckResult = await checkWords(content);
         if (wordCheckResult) {
+          console.log("Found problematic words:", wordCheckResult);
           processLog.skipped.push({
             title,
-            reason: "נמצאו מילים בעייתיות בתוכן הויקיפדיה",
+            reason: "נמצאו מילים בעייתיות בתוכן",
           });
           logger.info(
-            `דף ${title} דולג - נמצאו מילים בעייתיות`,
+            `דף ${title}: דולג - נמצאו מילים בעייתיות`,
             wordCheckResult
           );
           continue;
         }
 
         // שלב 4: יצירת דף מילוני
-        logger.info(`יוצר דף מילוני עבור: ${title}`);
-
-        // הכנת האובייקט data עבור createTionaryPage
-        const dataForTionary = {
-          text: wikipediaContent,
-          properties: wikipediaData[title].properties, // ניתן להוסיף properties נוספות אם נדרש
-        };
 
         // קביעת הסיווג לפי התבניות שנמצאו
         let classification;
-        if (Array.isArray(wikipediaTemplateCheck)) {
-          // אם נמצאו מספר קטגוריות, נבחר את הראשונה
-          const firstCategory = wikipediaTemplateCheck[0];
-          if (
-            firstCategory.includes("אישיות כדורגל") ||
-            firstCategory.includes("ספורטאי")
-          ) {
+        switch (wikipediaTemplateCheck) {
+          case "sport":
             classification = "ספורט";
-          } else if (
-            firstCategory.includes("מוזיקאי") ||
-            firstCategory.includes("אלבום")
-          ) {
+            break;
+          case "music":
             classification = "מוזיקה";
-          } else if (
-            firstCategory.includes("סדרת סרטים") ||
-            firstCategory.includes("דמות בדיונית")
-          ) {
-            classification = "טלוויזיה וקולנוע";
-          } else {
+            break;
+          case "tv":
+            classification = "טלוויזיה";
+            break;
+          default:
             classification = "כללי";
-          }
-        } else {
-          classification = "כללי";
         }
 
-        const processedContent = createTionaryPage(
-          dataForTionary,
-          classification
-        );
+        // הכנת האובייקט data עבור createTionaryPage
+        const wikipediaData = {
+          text: content,
+          title,
+          revid: wikipediaParse.revid,
+          properties: wikipediaParse.properties,
+        };
+
+        const processData = {
+          currentPage: true,
+          page: title,
+          exist: true,
+          bot: classification,
+        };
+
+        const processedContent = processWikiContent(wikipediaData, processData);
 
         // שלב 5: שמירה במכלול
-        logger.info(`שומר דף מילוני: ${title}`);
-        const editResult = await hamichlol.edit({
+        const { edit, error } = await hamichlol.edit({
           title: title,
           text: processedContent,
           summary: `המרה לערך מילוני מתוכן ויקיפדיה (${classification})`,
-          tags: "פתיחת ערך חסום",
+          tags: "פתיחת ערך חסום|auto-update",
         });
 
-        if (editResult.edit) {
+        if (edit) {
           processLog.processed.push({
             title,
             classification,
-            revisionId: editResult.edit.newrevid,
+            revisionId: edit.newrevid,
           });
-          logger.info(
-            `דף ${title} עובד בהצלחה - revision ${editResult.edit.newrevid}`
-          );
+          logger.info(`דף ${title} עובד בהצלחה - revision ${edit.newrevid}`);
         } else {
+          logger.warn(`דף ${title} לא נערך - שגיאה`, error);
           throw new Error("שגיאה בעריכת הדף");
         }
       } catch (error) {
@@ -282,7 +262,7 @@ async function generateFinalLog(processLog) {
 }
 
 // הרצת הסקריפט
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (path.basename(import.meta.url) === path.basename(process.argv[1])) {
   processArticleMaintenancePages()
     .then(() => {
       logger.info("הסקריפט הסתיים בהצלחה");
