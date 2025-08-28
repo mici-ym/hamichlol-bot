@@ -128,7 +128,7 @@ export function detectTemplateCategory(text) {
     const categoryTemplates = categories[listName];
     if (Array.isArray(categoryTemplates)) {
       for (const word of categoryTemplates) {
-        if (text.includes(word)) {
+        if (text.includes(`{{${word}`)) {
           foundCategory = listName;
           break; // Found one word in this list, no need to check others
         }
