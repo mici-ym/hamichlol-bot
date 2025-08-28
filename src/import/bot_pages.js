@@ -114,7 +114,7 @@ export function detectTemplateCategory(text) {
     if (Array.isArray(categoryTemplates)) {
       for (const word of categoryTemplates) {
         if (text.includes(word)) {
-          foundCategory = categoryTemplates;
+          foundCategory = listName;
           break; // Found one word in this list, no need to check others
         }
       }
