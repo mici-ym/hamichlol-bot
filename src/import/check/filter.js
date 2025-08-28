@@ -1,3 +1,4 @@
+import logger from "../../logger.js";
 import lists from "./filter-lists.json" with {type: 'json'};
 
 /**
@@ -7,7 +8,7 @@ import lists from "./filter-lists.json" with {type: 'json'};
  * @return {Object|boolean} - An object with list names as keys and arrays of found words/phrases as values, or false if nothing is found.
  */
 async function checkWord(text) {
-  const foundWords = {};
+  const foundWords = new Map();
   /*const { colorMapping } = await import(
     encodeURIComponent(
       "https://www.hamichlol.org.il/w/index.php?title=מדיה_ויקי:Gadget-checkWords.json&action=raw",
@@ -19,10 +20,10 @@ async function checkWord(text) {
       const regex = new RegExp(word, "gi");
       const matches = Array.from(text.matchAll(regex));
       if (matches.length > 0) {
-        if (!foundWords[listName]) {
-          foundWords[listName] = [];
+        if (!foundWords.has(listName)) {
+          foundWords.set(listName, []);
         }
-        foundWords[listName].push({
+        foundWords.get(listName).push({
           expression: regex,
           matched: matches[0][0],
           input: text.substring(matches[0].index - 15, matches[0].index + 10),
@@ -50,8 +51,11 @@ async function checkWord(text) {
       }
     });
   });*/
+  if(foundWords.size > 0) {
+    logger.info("Found words:", {service: "filter", foundWords: Object.fromEntries(foundWords)});
+  }
 
-  return Object.keys(foundWords).length > 0 ? foundWords : false;
+  return foundWords.size > 0 ? Object.fromEntries(foundWords) : false;
 }
 
 export default checkWord;

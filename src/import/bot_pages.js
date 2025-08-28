@@ -107,31 +107,21 @@ export function detectTemplateCategory(text) {
   }
 
   const categories = templateCategories.templateCategories;
-  const foundWords = new Set(); // Use Set to avoid duplicates
+  let foundCategory = null; // Use Set to avoid duplicates
 
   for (let listName in categories) {
-    const wordList = categories[listName];
-    if (Array.isArray(wordList)) {
-      for (const word of wordList) {
+    const categoryTemplates = categories[listName];
+    if (Array.isArray(categoryTemplates)) {
+      for (const word of categoryTemplates) {
         if (text.includes(word)) {
-          foundWords.add(wordList);
+          foundCategory = categoryTemplates;
           break; // Found one word in this list, no need to check others
         }
       }
     }
   }
 
-  const foundWordsArray = Array.from(foundWords);
-  
-  if (foundWordsArray.length === 1) {
-    return foundWordsArray[0];
-  } else if (foundWordsArray.length === 2) {
-    return foundWordsArray;
-  } else if (foundWordsArray.length > 0) {
-    return foundWordsArray; // Return all found word lists if more than 2
-  } else {
-    return false;
-  }
+  return foundCategory;
 }
 
 /**

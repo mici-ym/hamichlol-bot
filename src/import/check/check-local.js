@@ -1,6 +1,6 @@
-import getRequestsInstance from "../../requests/requests.js";
+import { getRequestsInstance } from "../../requests/requests.js";
 
-const request = getRequestsInstance("https://www.hamichlol.org.il/w/api.php");
+const request = getRequestsInstance("hamichlol");
 /**
  * Check if a article has been edited locally or filtered based on comments.
  *
@@ -10,7 +10,7 @@ const request = getRequestsInstance("https://www.hamichlol.org.il/w/api.php");
 export async function checkLocalEdits(title) {
   const arrCommentAspaclarya = ["הסרת תוכן", "גיור מונח", "עריכה יהודית"];
   const arrCommentPhotos = ["הסרת תמונה", "החלפת תמונה"];
-  const queryPage = await request.queryPages({
+  const { [title]: page } = await request.queryPages({
     titles: title,
     options: {
       prop: "categories|revisions|templates",
@@ -20,7 +20,6 @@ export async function checkLocalEdits(title) {
       tltemplates: "תבנית:נערך במכלול",
     },
   });
-  const page = Object.values(queryPage.query.pages)[0];
   if (!page) {
     return false;
   }
