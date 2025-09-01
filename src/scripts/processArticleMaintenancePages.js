@@ -371,14 +371,6 @@ async function generateFinalLog(processLog) {
 // הרצת הסקריפט
 if (path.basename(import.meta.url) === path.basename(process.argv[1])) {
   processArticleMaintenancePages()
-    .then(() => {
-      logger.info("הסקריפט הסתיים בהצלחה");
-      process.exit(0);
-    })
-    .catch((error) => {
-      logger.error("הסקריפט נכשל:", error);
-      process.exit(1);
-    });
 }
 
 export default processArticleMaintenancePages;
