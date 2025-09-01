@@ -265,7 +265,8 @@ async function processBatch(titles, processLog) {
             classification,
             revisionId: edit.newrevid,
           });
-          logger.info(`דף ${title} עובד בהצלחה - revision ${edit.newrevid}`);
+          console.log("\x1d[32m===edited!===\n" + edit + "===edited===\x1d[0m");
+          logger.info(`דף ${title} נשמר בהצלחה:`, edit);
         } else {
           logger.warn(`דף ${title} לא נערך - שגיאה`, error);
           processLog.errors.push({
