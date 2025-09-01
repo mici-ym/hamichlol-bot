@@ -231,10 +231,11 @@ export class Requests extends WikiClient {
    * @param {Object} params - The parameters for the query.
    * @param {Object} [params.options={}] - Additional options to be included in the query parameters.
    * @param {boolean} [params.getContinue=true] - Whether to automatically fetch all results using continuation.
+   * @param {boolean} [params.esGenerator=false] - If true, returns an async generator that yields each response separately. If false, merges all results.
    * @param {string} [method="GET"] - The HTTP method to use for the request.
-  * @returns {Promise<Object>} A promise that resolves to the query result. If getContinue is true, it includes all paginated results.
+  * @returns {Promise<Object>|AsyncGenerator} A promise that resolves to the query result, or an async generator if esGenerator is true.
    */
-  async query({ options = {}, getContinue = true, method = "GET" }) {
+  async query({ options = {}, getContinue = true, esGenerator = false, method = "GET" }) {
     const queryParams = {
       action: "query",
       format: "json",
@@ -248,7 +249,7 @@ export class Requests extends WikiClient {
     if (!getContinue) {
       return res;
     } else {
-      return await this.getWithContinue(queryParams, res, method);
+      return await this.getWithContinue(queryParams, res, method, esGenerator);
     }
   }
 
@@ -258,10 +259,11 @@ export class Requests extends WikiClient {
    * @param {object} queryParams - The query string for the GET request.
    * @param {object} data - The data from the previous query results.
    * @param {string} method - The HTTP method used for the query.
-   * @returns {Promise} - The result of the final query.
+   * @param {boolean} [esGenerator=false] - If true, returns an async generator that yields each response separately. If false, merges all results.
+   * @returns {Promise|AsyncGenerator} - The result of the final query or an async generator if esGenerator is true.
    * @throws {Error} - If an error occurs during the process.
    */
-  async getWithContinue(queryParams, data, method) {
+  async *getWithContinue(queryParams, data, method, esGenerator = false) {
     if (!data || !data.query) {
       const errorMessage = "data or query is not valid";
       logger.error(errorMessage);
@@ -275,6 +277,9 @@ export class Requests extends WikiClient {
     let contin = data.continue;
 
     let results = mergeResults([], data);
+    if (esGenerator) {
+      yield results;
+    }
 
     try {
       while (contin) {
@@ -282,10 +287,15 @@ export class Requests extends WikiClient {
         const res = await (method === "Get"
           ? super.wikiGet(queryParams)
           : super.wikiPost(queryParams));
-        results = mergeResults(results, res);
+        results = mergeResults(esGenerator ? [] : results, res);
         contin = res.continue;
+        if (esGenerator) {
+          yield results;
+        }
       }
-      return results;
+      if (!esGenerator) {
+        return results;
+      }
     } catch (error) {
       logger.error(error);
       //console.error(error);
@@ -318,10 +328,10 @@ export function getRequestsInstance(nameInstance = "hamichlol", wikiUrl) {
   wikiUrl = wikiUrl
     ? wikiUrl
     : nameInstance === "hamichlol"
-    ? "https://www.hamichlol.org.il/w/api.php"
-    : process.platform === "win32"
-    ? "https://www.hamichlol.org.il/import/get_wik1i.php"
-    : "https://he.wikipedia.org/w/api.php";
+      ? "https://www.hamichlol.org.il/w/api.php"
+      : process.platform === "win32"
+        ? "https://www.hamichlol.org.il/import/get_wik1i.php"
+        : "https://he.wikipedia.org/w/api.php";
   if (!instance.has(nameInstance)) {
     logger.info("creating instance: " + nameInstance);
     instance.set(nameInstance, new Requests(wikiUrl));
