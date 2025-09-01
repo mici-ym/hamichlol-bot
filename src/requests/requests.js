@@ -136,7 +136,7 @@ export class Requests extends WikiClient {
       logger.error(errorMessage);
       throw new Error(errorMessage);
     }
-    return await this.query({ options: queryParams, getContinue, esGenerator });
+    return await this.handleGeneratorOrPromiseQuery(esGenerator, options, getContinue,);
   }
 
   /**
@@ -181,11 +181,11 @@ export class Requests extends WikiClient {
       delete options.cmtype;
     }
 
-    return await this.query({
-      options: queryParams,
-      getContinue,
+    return await this.handleGeneratorOrPromiseQuery(
       esGenerator,
-    });
+      queryParams,
+      getContinue,
+    );
   }
 
   /**
@@ -251,6 +251,8 @@ export class Requests extends WikiClient {
       : super.wikiPost(queryParams));
     if (!getContinue) {
       return res;
+    } else if (esGenerator) {
+      yield* this.getWithContinue(queryParams, res, method, esGenerator);
     } else {
       return await this.getWithContinue(queryParams, res, method, esGenerator);
     }
@@ -303,6 +305,14 @@ export class Requests extends WikiClient {
       logger.error(error);
       //console.error(error);
       //throw new Error(error);
+    }
+
+  }
+  async *handleGeneratorOrPromiseQuery(esGenerator, options, getContinue) {
+    if (esGenerator) {
+      yield* this.query({ options, getContinue, esGenerator });
+    } else {
+      return await this.query({ options, getContinue, esGenerator });
     }
   }
 
