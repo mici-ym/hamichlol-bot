@@ -44,7 +44,6 @@ async function processArticleMaintenancePages() {
         logger.info("לא נמצאו דפים עם התבנית");
         return;
       }
-
       processLog.total = Object.keys(pagesWithTemplate).length;
       logger.info(`נמצאו ${processLog.total} דפים עם התבנית`);
 
@@ -72,28 +71,29 @@ async function processArticleMaintenancePages() {
           logger.error(`שגיאה בעיבוד דף ${title}:`, error);
         }
       }
-    }
 
-    if (titlesToProcess.size === 0) {
-      logger.info("לא נמצאו דפים לעיבוד לאחר הסינון");
-      return;
-    }
 
-    // שלב 2: חלוקה לקבוצות של 50 ועיבוד כל קבוצה
-    const titlesArray = Array.from(titlesToProcess);
-    const batchSize = 50;
-    
-    logger.info(`מתחיל עיבוד ${titlesArray.length} דפים בקבוצות של ${batchSize}`);
+      if (titlesToProcess.size === 0) {
+        logger.info("לא נמצאו דפים לעיבוד לאחר הסינון");
+        return;
+      }
 
-    for (let i = 0; i < titlesArray.length; i += batchSize) {
-      const batch = titlesArray.slice(i, i + batchSize);
-      logger.info(`מעבד קבוצה ${Math.floor(i / batchSize) + 1}/${Math.ceil(titlesArray.length / batchSize)} (${batch.length} דפים)`);
-      
-      await processBatch(batch, processLog);
-      
-      // המתנה קצרה בין קבוצות כדי לא להעמיס על השרתים
-      if (i + batchSize < titlesArray.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      // שלב 2: חלוקה לקבוצות של 50 ועיבוד כל קבוצה
+      const titlesArray = Array.from(titlesToProcess);
+      const batchSize = 50;
+
+      logger.info(`מתחיל עיבוד ${titlesArray.length} דפים בקבוצות של ${batchSize}`);
+
+      for (let i = 0; i < titlesArray.length; i += batchSize) {
+        const batch = titlesArray.slice(i, i + batchSize);
+        logger.info(`מעבד קבוצה ${Math.floor(i / batchSize) + 1}/${Math.ceil(titlesArray.length / batchSize)} (${batch.length} דפים)`);
+
+        await processBatch(batch, processLog);
+
+        // המתנה קצרה בין קבוצות כדי לא להעמיס על השרתים
+        if (i + batchSize < titlesArray.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
     }
 
@@ -121,15 +121,15 @@ async function processBatch(titles, processLog) {
   try {
     // שלב 1: בקשת תוכן מויקיפדיה עבור כל הדפים בקבוצה
     logger.info(`טוען תוכן מויקיפדיה עבור ${titles.length} דפים...`);
-    
+
     const wikipediaResults = {};
-    
+
     // חלוקה לקבוצות קטנות יותר לויקיפדיה (בגלל הגבלות API)
     const wikiApiBatchSize = 20;
-    
+
     for (let i = 0; i < titles.length; i += wikiApiBatchSize) {
       const wikiBatch = titles.slice(i, i + wikiApiBatchSize);
-      
+
       try {
         const { query } = await wikipedia.query({
           titles: wikiBatch.join('|'),
@@ -143,7 +143,7 @@ async function processBatch(titles, processLog) {
             if (pageData.missing) {
               continue; // דף לא קיים בויקיפדיה
             }
-            
+
             if (pageData.revisions && pageData.revisions[0] && pageData.revisions[0].slots && pageData.revisions[0].slots.main) {
               wikipediaResults[pageData.title] = {
                 text: pageData.revisions[0].slots.main['*'],
@@ -163,7 +163,7 @@ async function processBatch(titles, processLog) {
     for (const title of titles) {
       try {
         const wikipediaData = wikipediaResults[title];
-        
+
         if (!wikipediaData) {
           processLog.skipped.push({
             title,
@@ -222,7 +222,7 @@ async function processBatch(titles, processLog) {
           default:
             classification = null;
         }
-        
+
         if (!classification) {
           processLog.skipped.push({
             title,
@@ -267,10 +267,10 @@ async function processBatch(titles, processLog) {
             error: error || "שגיאה לא ידועה בעריכה",
           });
         }
-        
+
         // המתנה קצרה בין עריכות
         await new Promise(resolve => setTimeout(resolve, 200));
-        
+
       } catch (error) {
         processLog.errors.push({
           title,
@@ -283,9 +283,9 @@ async function processBatch(titles, processLog) {
     logger.error("שגיאה בעיבוד קבוצה:", error);
     // הוסף את כל הדפים בקבוצה לשגיאות
     for (const title of titles) {
-      if (!processLog.errors.some(e => e.title === title) && 
-          !processLog.processed.some(p => p.title === title) &&
-          !processLog.skipped.some(s => s.title === title)) {
+      if (!processLog.errors.some(e => e.title === title) &&
+        !processLog.processed.some(p => p.title === title) &&
+        !processLog.skipped.some(s => s.title === title)) {
         processLog.errors.push({
           title,
           error: "שגיאה כללית בעיבוד הקבוצה",
@@ -336,9 +336,8 @@ async function generateFinalLog(processLog) {
     logContent += `\n`;
   }
 
-  logContent += `\nלוג נוצר אוטומטית על ידי [[משתמש:${
-    hamichlol.userName
-  }]] ב-${new Date().toLocaleString("he-IL")}`;
+  logContent += `\nלוג נוצר אוטומטית על ידי [[משתמש:${hamichlol.userName
+    }]] ב-${new Date().toLocaleString("he-IL")}`;
 
   try {
     const logResult = await hamichlol.edit({
