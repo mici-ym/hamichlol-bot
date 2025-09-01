@@ -32,45 +32,139 @@ async function processArticleMaintenancePages() {
   try {
     logger.info("מתחיל עיבוד דפים עם תבנית 'דף לטיפול במרחב הערכים'");
 
-    // שלב 1: איתור דפים עם התבנית
+    // שלב 1: איסוף כל הכותרות לעיבוד
     logger.info("מחפש דפים עם התבנית...");
-    const pagesWithTemplate = await hamichlol.embeddedin({
-      title: "תבנית:דף לטיפול",
-    });
+    const titlesToProcess = new Set();
 
-    if (!pagesWithTemplate || Object.keys(pagesWithTemplate).length === 0) {
-      logger.info("לא נמצאו דפים עם התבנית");
+    for await (const pagesWithTemplate of hamichlol.embeddedin({
+      title: "תבנית:דף לטיפול",
+      esGenerator: true,
+    })) {
+      if (!pagesWithTemplate || Object.keys(pagesWithTemplate).length === 0) {
+        logger.info("לא נמצאו דפים עם התבנית");
+        return;
+      }
+
+      processLog.total = Object.keys(pagesWithTemplate).length;
+      logger.info(`נמצאו ${processLog.total} דפים עם התבנית`);
+
+      // איסוף כותרות אחרי בדיקת עריכות מקומיות
+      for (const [pageId, pageData] of Object.entries(pagesWithTemplate)) {
+        const title = pageData.title;
+
+        try {
+          // בדיקה האם הדף כבר נערך מקומית
+          const localEditCheck = await checkLocalEdits(title);
+          if (localEditCheck && localEditCheck !== false) {
+            processLog.skipped.push({
+              title,
+              reason: `נערך מקומית: ${localEditCheck}`,
+            });
+            logger.info(`דף ${title}: דולג - ${localEditCheck}`);
+            continue;
+          }
+          titlesToProcess.add(title);
+        } catch (error) {
+          processLog.errors.push({
+            title,
+            error: error.message,
+          });
+          logger.error(`שגיאה בעיבוד דף ${title}:`, error);
+        }
+      }
+    }
+
+    if (titlesToProcess.size === 0) {
+      logger.info("לא נמצאו דפים לעיבוד לאחר הסינון");
       return;
     }
 
-    processLog.total = Object.keys(pagesWithTemplate).length;
-    logger.info(`נמצאו ${processLog.total} דפים עם התבנית`);
+    // שלב 2: חלוקה לקבוצות של 50 ועיבוד כל קבוצה
+    const titlesArray = Array.from(titlesToProcess);
+    const batchSize = 50;
+    
+    logger.info(`מתחיל עיבוד ${titlesArray.length} דפים בקבוצות של ${batchSize}`);
 
-    // שלב 2: בדיקת כל דף
-    for (const [pageId, pageData] of Object.entries(pagesWithTemplate)) {
-      const title = pageData.title;
+    for (let i = 0; i < titlesArray.length; i += batchSize) {
+      const batch = titlesArray.slice(i, i + batchSize);
+      logger.info(`מעבד קבוצה ${Math.floor(i / batchSize) + 1}/${Math.ceil(titlesArray.length / batchSize)} (${batch.length} דפים)`);
+      
+      await processBatch(batch, processLog);
+      
+      // המתנה קצרה בין קבוצות כדי לא להעמיס על השרתים
+      if (i + batchSize < titlesArray.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
 
+    // שלב 3: יצירת לוג סופי
+    await generateFinalLog(processLog);
+  } catch (error) {
+    logger.error("שגיאה כללית בסקריפט:", error);
+    throw error;
+  } finally {
+    // התנתקות מהלקוחות
+    try {
+      await hamichlol.logout();
+    } catch (error) {
+      logger.warn("שגיאה בהתנתקות ממכלול:", error);
+    }
+  }
+}
+
+/**
+ * עיבוד קבוצה של דפים
+ * @param {string[]} titles - מערך כותרות לעיבוד
+ * @param {Object} processLog - אובייקט הלוג של התהליך
+ */
+async function processBatch(titles, processLog) {
+  try {
+    // שלב 1: בקשת תוכן מויקיפדיה עבור כל הדפים בקבוצה
+    logger.info(`טוען תוכן מויקיפדיה עבור ${titles.length} דפים...`);
+    
+    const wikipediaResults = {};
+    
+    // חלוקה לקבוצות קטנות יותר לויקיפדיה (בגלל הגבלות API)
+    const wikiApiBatchSize = 20;
+    
+    for (let i = 0; i < titles.length; i += wikiApiBatchSize) {
+      const wikiBatch = titles.slice(i, i + wikiApiBatchSize);
+      
       try {
-        // בדיקה האם הדף כבר נערך מקומית
-        const localEditCheck = await checkLocalEdits(title);
-        if (localEditCheck && localEditCheck !== false) {
-          processLog.skipped.push({
-            title,
-            reason: `נערך מקומית: ${localEditCheck}`,
-          });
-          logger.info(`דף ${title}: דולג - ${localEditCheck}`);
-          continue;
-        }
-
-        // שלב 3: טעינת טקסט מויקיפדיה
-        logger.info(`טוען תוכן מויקיפדיה עבור: ${title}`);
-        const { parse: wikipediaParse } = await wikipedia.parse({
-          page: title,
-          prop: `revid|properties|wikitext`,
-          useIdsOrTitles: "titles",
+        const { query } = await wikipedia.query({
+          titles: wikiBatch.join('|'),
+          prop: 'revisions|properties',
+          rvprop: 'content|ids',
+          rvslots: 'main'
         });
 
-        if (!wikipediaParse || !wikipediaParse.wikitext) {
+        if (query && query.pages) {
+          for (const [pageId, pageData] of Object.entries(query.pages)) {
+            if (pageData.missing) {
+              continue; // דף לא קיים בויקיפדיה
+            }
+            
+            if (pageData.revisions && pageData.revisions[0] && pageData.revisions[0].slots && pageData.revisions[0].slots.main) {
+              wikipediaResults[pageData.title] = {
+                text: pageData.revisions[0].slots.main['*'],
+                revid: pageData.revisions[0].revid,
+                title: pageData.title
+              };
+            }
+          }
+        }
+      } catch (error) {
+        logger.error(`שגיאה בטעינת קבוצה מויקיפדיה:`, error);
+        // המשך עם הדפים שכן נטענו
+      }
+    }
+
+    // שלב 2: עיבוד כל דף בקבוצה
+    for (const title of titles) {
+      try {
+        const wikipediaData = wikipediaResults[title];
+        
+        if (!wikipediaData) {
           processLog.skipped.push({
             title,
             reason: "לא נמצא בויקיפדיה",
@@ -79,7 +173,7 @@ async function processArticleMaintenancePages() {
           continue;
         }
 
-        const content = wikipediaParse.wikitext["*"];
+        const content = wikipediaData.text;
 
         // בדיקה נוספת של התוכן מויקיפדיה
         const wikipediaTemplateCheck = detectTemplateCategory(content);
@@ -107,8 +201,6 @@ async function processArticleMaintenancePages() {
           continue;
         }
 
-        // שלב 4: יצירת דף מילוני
-
         // קביעת הסיווג לפי התבניות שנמצאו
         let classification;
         switch (wikipediaTemplateCheck) {
@@ -130,19 +222,17 @@ async function processArticleMaintenancePages() {
           default:
             classification = null;
         }
+        
         if (!classification) {
+          processLog.skipped.push({
+            title,
+            reason: "לא נמצא סיווג מתאים",
+          });
           logger.info(`דף ${title}: דולג - לא נמצא סיווג מתאים`);
           continue;
         }
 
-        // הכנת האובייקט data עבור createTionaryPage
-        const wikipediaData = {
-          text: content,
-          title,
-          revid: wikipediaParse.revid,
-          properties: wikipediaParse.properties,
-        };
-
+        // הכנת האובייקט data עבור processWikiContent
         const processData = {
           currentPage: title,
           page: title,
@@ -155,7 +245,7 @@ async function processArticleMaintenancePages() {
           processData
         );
 
-        // שלב 5: שמירה במכלול
+        // שמירה במכלול
         const { edit, error } = await hamichlol.edit({
           title: title,
           text,
@@ -172,8 +262,15 @@ async function processArticleMaintenancePages() {
           logger.info(`דף ${title} עובד בהצלחה - revision ${edit.newrevid}`);
         } else {
           logger.warn(`דף ${title} לא נערך - שגיאה`, error);
-          throw new Error("שגיאה בעריכת הדף");
+          processLog.errors.push({
+            title,
+            error: error || "שגיאה לא ידועה בעריכה",
+          });
         }
+        
+        // המתנה קצרה בין עריכות
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
       } catch (error) {
         processLog.errors.push({
           title,
@@ -182,18 +279,18 @@ async function processArticleMaintenancePages() {
         logger.error(`שגיאה בעיבוד דף ${title}:`, error);
       }
     }
-
-    // שלב 6: יצירת לוג סופי
-    await generateFinalLog(processLog);
   } catch (error) {
-    logger.error("שגיאה כללית בסקריפט:", error);
-    throw error;
-  } finally {
-    // התנתקות מהלקוחות
-    try {
-      await hamichlol.logout();
-    } catch (error) {
-      logger.warn("שגיאה בהתנתקות ממכלול:", error);
+    logger.error("שגיאה בעיבוד קבוצה:", error);
+    // הוסף את כל הדפים בקבוצה לשגיאות
+    for (const title of titles) {
+      if (!processLog.errors.some(e => e.title === title) && 
+          !processLog.processed.some(p => p.title === title) &&
+          !processLog.skipped.some(s => s.title === title)) {
+        processLog.errors.push({
+          title,
+          error: "שגיאה כללית בעיבוד הקבוצה",
+        });
+      }
     }
   }
 }
@@ -204,7 +301,7 @@ async function processArticleMaintenancePages() {
  */
 async function generateFinalLog(processLog) {
   const currentDate = new Date().toLocaleDateString("he-IL");
-  const logTitle = `משתמש:המכלולבוט/לוג עיבוד דפים לטיפול - ${currentDate}`;
+  const logTitle = `משתמש:${hamichlol.userName}/לוג עיבוד דפים לטיפול - ${currentDate}`;
 
   let logContent = `== לוג עיבוד דפים לטיפול במרחב הערכים - ${currentDate} ==\n\n`;
   logContent += `'''סה"כ דפים שנבדקו:''' ${processLog.total}\n`;
@@ -223,7 +320,7 @@ async function generateFinalLog(processLog) {
 
   // רשימת דפים שנדלגו
   if (processLog.skipped.length > 0) {
-    logContent += `=== דפים שנדלגו (${processLog.skipped.length}) ===\n`;
+    logContent += `=== דפים שדולגו (${processLog.skipped.length}) ===\n`;
     for (const item of processLog.skipped) {
       logContent += `# [[${item.title}]] - סיבה: ${item.reason}\n`;
     }
@@ -239,10 +336,9 @@ async function generateFinalLog(processLog) {
     logContent += `\n`;
   }
 
-  logContent += `\nלוג נוצר אוטומטית על ידי [[משתמש:המכלולבוט]] ב-${new Date().toLocaleString(
-    "he-IL"
-  )}\n`;
-  logContent += `[[קטגוריה:לוגים של המכלולבוט]]`;
+  logContent += `\nלוג נוצר אוטומטית על ידי [[משתמש:${
+    hamichlol.userName
+  }]] ב-${new Date().toLocaleString("he-IL")}`;
 
   try {
     const logResult = await hamichlol.edit({
