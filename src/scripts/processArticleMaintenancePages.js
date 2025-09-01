@@ -8,6 +8,7 @@ import path from "path";
 
 // הגדרת לקוחות למכלול ולויקיפדיה
 const hamichlol = getRequestsInstance("hamichlol");
+hamichlol.withLogedIn = false;
 const wikipedia = getRequestsInstance("wiki");
 wikipedia.withLogedIn = false;
 
@@ -34,21 +35,22 @@ async function processArticleMaintenancePages() {
 
     // שלב 1: איסוף כל הכותרות לעיבוד
     logger.info("מחפש דפים עם התבנית...");
-    const titlesToProcess = new Set();
-
+    
     for await (const pagesWithTemplate of hamichlol.embeddedin({
       title: "תבנית:דף לטיפול",
       esGenerator: true,
     })) {
-      if (!pagesWithTemplate || Object.keys(pagesWithTemplate).length === 0) {
+      console.log("Pages with template batch:", pagesWithTemplate);
+      if (!pagesWithTemplate || pagesWithTemplate.length === 0) {
         logger.info("לא נמצאו דפים עם התבנית");
         return;
       }
-      processLog.total = Object.keys(pagesWithTemplate).length;
+      const titlesToProcess = new Set();
+      processLog.total += pagesWithTemplate.length;
       logger.info(`נמצאו ${processLog.total} דפים עם התבנית`);
 
       // איסוף כותרות אחרי בדיקת עריכות מקומיות
-      for (const [pageId, pageData] of Object.entries(pagesWithTemplate)) {
+      for (const pageData of pagesWithTemplate) {
         const title = pageData.title;
 
         try {
@@ -125,30 +127,34 @@ async function processBatch(titles, processLog) {
     const wikipediaResults = {};
 
     // חלוקה לקבוצות קטנות יותר לויקיפדיה (בגלל הגבלות API)
-    const wikiApiBatchSize = 20;
+    const wikiApiBatchSize = 50;
 
     for (let i = 0; i < titles.length; i += wikiApiBatchSize) {
       const wikiBatch = titles.slice(i, i + wikiApiBatchSize);
 
       try {
-        const { query } = await wikipedia.query({
+        const pages = await wikipedia.queryPages({
           titles: wikiBatch.join('|'),
-          prop: 'revisions|properties',
-          rvprop: 'content|ids',
-          rvslots: 'main'
+          useIdsOrTitles: "titles",
+          options: {
+            prop: 'revisions|properties',
+            rvprop: 'content|ids',
+            rvslots: 'main'
+          },
+          method: 'POST'
         });
 
-        if (query && query.pages) {
-          for (const [pageId, pageData] of Object.entries(query.pages)) {
+        if (pages) {
+          for (const [title, pageData] of Object.entries(pages)) {
             if (pageData.missing) {
               continue; // דף לא קיים בויקיפדיה
             }
 
             if (pageData.revisions && pageData.revisions[0] && pageData.revisions[0].slots && pageData.revisions[0].slots.main) {
-              wikipediaResults[pageData.title] = {
+              wikipediaResults[title] = {
                 text: pageData.revisions[0].slots.main['*'],
                 revid: pageData.revisions[0].revid,
-                title: pageData.title
+                title: title
               };
             }
           }

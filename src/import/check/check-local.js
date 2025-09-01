@@ -12,6 +12,7 @@ export async function checkLocalEdits(title) {
   const arrCommentPhotos = ["הסרת תמונה", "החלפת תמונה"];
   const { [title]: page } = await request.queryPages({
     titles: title,
+    useIdsOrTitles: "titles",
     options: {
       prop: "categories|revisions|templates",
       clcategories:
