@@ -113,7 +113,7 @@ export class Requests extends WikiClient {
    * @throws {Error} Throws an error if both pageid and title are provided.
    * @returns {Promise<Object>|AsyncGenerator} A promise that resolves to the query results containing pages that embed the specified page, or an async generator if esGenerator is true.
    */
-  async *embeddedin({ pageid, title, getContinue = true, options = {} }) {
+  async *embeddedin({ pageid, title, getContinue = true, options = {}, esGenerator = false }) {
     const queryParams = {
       action: "query",
       format: "json",
@@ -155,6 +155,7 @@ export class Requests extends WikiClient {
     categoryId,
     getContinue = true,
     options = {},
+    esGenerator = false,
   }) {
     const queryParams = {
       action: "query",
