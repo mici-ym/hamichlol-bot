@@ -137,7 +137,7 @@ async function processBatch(titles, processLog) {
           titles: wikiBatch.join('|'),
           useIdsOrTitles: "titles",
           options: {
-            prop: 'revisions|properties',
+            prop: 'revisions|pageprops',
             rvprop: 'content|ids',
             rvslots: 'main'
           },
