@@ -1,4 +1,3 @@
-
 /**
  * @typedef {Object} RequestsOptions
  * @property {string} wikiUrl - The URL of the wiki API (required)
@@ -110,8 +109,9 @@ export class Requests extends WikiClient {
    * @param {string} [params.title] - The title of the page to find embeddings for. Mutually exclusive with 'pageid'.
    * @param {boolean} [params.getContinue=true] - Whether to automatically fetch all results using continuation.
    * @param {Object} [params.options={}] - Additional query parameters to be included in the request.
+   * @param {boolean} [params.esGenerator=false] - If true, returns an async generator that yields each response separately. If false, merges all results.
    * @throws {Error} Throws an error if both pageid and title are provided.
-   * @returns {Promise<Object>} A promise that resolves to the query results containing pages that embed the specified page.
+   * @returns {Promise<Object>|AsyncGenerator} A promise that resolves to the query results containing pages that embed the specified page, or an async generator if esGenerator is true.
    */
   async embeddedin({ pageid, title, getContinue = true, options = {} }) {
     const queryParams = {
@@ -136,7 +136,7 @@ export class Requests extends WikiClient {
       logger.error(errorMessage);
       throw new Error(errorMessage);
     }
-    return await this.query({ options: queryParams, getContinue });
+    return await this.query({ options: queryParams, getContinue, esGenerator });
   }
 
   /**
@@ -147,7 +147,8 @@ export class Requests extends WikiClient {
    * @param {number} [options.categoryId] - The ID of the category whose members are to
    * @param {boolean} [options.getContinue=true] - A flag indicating whether to retrieve all results using continuation.
    * @param {Object} [options.options={}] - Additional options for the query request.
-   * @returns {Promise<Object>} - A promise that resolves to the query result in JSON format.
+   * @param {boolean} [options.esGenerator=false] - If true, returns an async generator that yields each response separately. If false, merges all results.
+   * @returns {Promise<Object>|AsyncGenerator} - A promise that resolves to the query result in JSON format, or an async generator if esGenerator is true.
    */
   async categoryMembers({
     categoryName,
@@ -182,6 +183,7 @@ export class Requests extends WikiClient {
     return await this.query({
       options: queryParams,
       getContinue,
+      esGenerator,
     });
   }
 
