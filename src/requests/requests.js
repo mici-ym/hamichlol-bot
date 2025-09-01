@@ -113,7 +113,7 @@ export class Requests extends WikiClient {
    * @throws {Error} Throws an error if both pageid and title are provided.
    * @returns {Promise<Object>|AsyncGenerator} A promise that resolves to the query results containing pages that embed the specified page, or an async generator if esGenerator is true.
    */
-  async embeddedin({ pageid, title, getContinue = true, options = {} }) {
+  async *embeddedin({ pageid, title, getContinue = true, options = {} }) {
     const queryParams = {
       action: "query",
       format: "json",
@@ -150,7 +150,7 @@ export class Requests extends WikiClient {
    * @param {boolean} [options.esGenerator=false] - If true, returns an async generator that yields each response separately. If false, merges all results.
    * @returns {Promise<Object>|AsyncGenerator} - A promise that resolves to the query result in JSON format, or an async generator if esGenerator is true.
    */
-  async categoryMembers({
+  async *categoryMembers({
     categoryName,
     categoryId,
     getContinue = true,
@@ -237,7 +237,7 @@ export class Requests extends WikiClient {
    * @param {string} [method="GET"] - The HTTP method to use for the request.
   * @returns {Promise<Object>|AsyncGenerator} A promise that resolves to the query result, or an async generator if esGenerator is true.
    */
-  async query({ options = {}, getContinue = true, esGenerator = false, method = "GET" }) {
+  async *query({ options = {}, getContinue = true, esGenerator = false, method = "GET" }) {
     const queryParams = {
       action: "query",
       format: "json",
