@@ -31,8 +31,6 @@ async function processArticleMaintenancePages() {
   };
 
   try {
-    logger.info("מתחיל עיבוד דפים עם תבנית 'דף לטיפול במרחב הערכים'");
-
     // שלב 1: איסוף כל הכותרות לעיבוד
     logger.info("מחפש דפים עם התבנית...");
     
@@ -40,7 +38,6 @@ async function processArticleMaintenancePages() {
       title: "תבנית:דף לטיפול",
       esGenerator: true,
     })) {
-      console.log("Pages with template batch:", pagesWithTemplate);
       if (!pagesWithTemplate || pagesWithTemplate.length === 0) {
         logger.info("לא נמצאו דפים עם התבנית");
         return;
@@ -61,7 +58,7 @@ async function processArticleMaintenancePages() {
               title,
               reason: `נערך מקומית: ${localEditCheck}`,
             });
-            logger.info(`דף ${title}: דולג - ${localEditCheck}`);
+            logger.info(`בדף ${title}: נמצאו עריכות מקומיות - ${localEditCheck}`);
             continue;
           }
           titlesToProcess.add(title);
@@ -84,7 +81,7 @@ async function processArticleMaintenancePages() {
       const titlesArray = Array.from(titlesToProcess);
       const batchSize = 50;
 
-      logger.info(`מתחיל עיבוד ${titlesArray.length} דפים בקבוצות של ${batchSize}`);
+      console.log(`מתחיל עיבוד ${titlesArray.length} דפים בקבוצות של ${batchSize}`);
 
       for (let i = 0; i < titlesArray.length; i += batchSize) {
         const batch = titlesArray.slice(i, i + batchSize);
@@ -122,7 +119,7 @@ async function processArticleMaintenancePages() {
 async function processBatch(titles, processLog) {
   try {
     // שלב 1: בקשת תוכן מויקיפדיה עבור כל הדפים בקבוצה
-    logger.info(`טוען תוכן מויקיפדיה עבור ${titles.length} דפים...`);
+    console.log(`טוען תוכן מויקיפדיה עבור ${titles.length} דפים...`);
 
     const wikipediaResults = {};
 
@@ -186,13 +183,13 @@ async function processBatch(titles, processLog) {
         if (!wikipediaTemplateCheck) {
           processLog.skipped.push({
             title,
-            reason: "לא נמצאו תבניות תרבות בתוכן הויקיפדיה",
+            reason: "לא נמצאו תבניות תרבות בתוכן הדף",
           });
-          logger.info(`דף ${title}: דולג - לא נמצאו תבניות תרבות בויקיפדיה`);
+          logger.info(`דף ${title}: דולג - לא נמצאו תבניות תרבות בתוכן הדף`);
           continue;
         }
 
-        // בדיקת מילים בתוכן הויקיפדיה
+        // בדיקת מילים בתוכן הדף
         const wordCheckResult = await checkWords(content);
         if (wordCheckResult) {
           console.log("Found problematic words:", wordCheckResult);
@@ -246,6 +243,7 @@ async function processBatch(titles, processLog) {
           bot: classification,
         };
 
+        console.log(`מעבד דף: ${title} (סיווג: ${classification})`);
         const { text, summary } = await processWikiContent(
           wikipediaData,
           processData
@@ -265,7 +263,7 @@ async function processBatch(titles, processLog) {
             classification,
             revisionId: edit.newrevid,
           });
-          console.log("\x1d[32m===edited!===\n" + edit + "===edited===\x1d[0m");
+          console.log("\x1b[32m===edited!===\n" + JSON.stringify(edit) + "===edited===\x1b[0m");
           logger.info(`דף ${title} נשמר בהצלחה:`, edit);
         } else {
           logger.warn(`דף ${title} לא נערך - שגיאה`, error);
@@ -311,40 +309,11 @@ async function generateFinalLog(processLog) {
   const logTitle = `משתמש:${hamichlol.userName}/לוג עיבוד דפים לטיפול - ${currentDate}`;
 
   let logContent = `== לוג עיבוד דפים לטיפול במרחב הערכים - ${currentDate} ==\n\n`;
-  logContent += `'''סה"כ דפים שנבדקו:''' ${processLog.total}\n`;
-  logContent += `'''דפים שעובדו בהצלחה:''' ${processLog.processed.length}\n`;
-  logContent += `'''דפים שנדלגו:''' ${processLog.skipped.length}\n`;
-  logContent += `'''דפים עם שגיאות:''' ${processLog.errors.length}\n\n`;
-
-  // רשימת דפים שעובדו בהצלחה
-  if (processLog.processed.length > 0) {
-    logContent += `=== דפים שעובדו בהצלחה (${processLog.processed.length}) ===\n`;
-    for (const item of processLog.processed) {
-      logContent += `# [[${item.title}]] - סיווג: ${item.classification} (גרסה ${item.revisionId})\n`;
-    }
-    logContent += `\n`;
-  }
-
-  // רשימת דפים שנדלגו
-  if (processLog.skipped.length > 0) {
-    logContent += `=== דפים שדולגו (${processLog.skipped.length}) ===\n`;
-    for (const item of processLog.skipped) {
-      logContent += `# [[${item.title}]] - סיבה: ${item.reason}\n`;
-    }
-    logContent += `\n`;
-  }
-
-  // רשימת שגיאות
-  if (processLog.errors.length > 0) {
-    logContent += `=== דפים עם שגיאות (${processLog.errors.length}) ===\n`;
-    for (const item of processLog.errors) {
-      logContent += `# [[${item.title}]] - שגיאה: ${item.error}\n`;
-    }
-    logContent += `\n`;
-  }
-
-  logContent += `\nלוג נוצר אוטומטית על ידי [[משתמש:${hamichlol.userName
-    }]] ב-${new Date().toLocaleString("he-IL")}`;
+  logContent += `סה"כ דפים שנבדקו: ${processLog.total}\n`;
+  logContent += `דפים שעובדו בהצלחה: ${processLog.processed.length}\n`;
+  logContent += `דפים שדולגו: ${processLog.skipped.length}\n`;
+  logContent += `דפים עם שגיאות: ${processLog.errors.length}\n\n`;
+  logContent += "\n~~~~~";
 
   try {
     const logResult = await hamichlol.edit({
@@ -356,17 +325,25 @@ async function generateFinalLog(processLog) {
 
     if (logResult.edit) {
       logger.info(`לוג נשמר בהצלחה: ${logTitle}`);
-      console.log(`\n=== סיכום התהליך ===`);
+      console.log(`\x1b[32m=== סיכום התהליך ===\x1b[0m`);
       console.log(`סה"כ דפים שנבדקו: ${processLog.total}`);
       console.log(`דפים שעובדו בהצלחה: ${processLog.processed.length}`);
-      console.log(`דפים שנדלגו: ${processLog.skipped.length}`);
+      console.log(`דפים שדולגו: ${processLog.skipped.length}`);
       console.log(`דפים עם שגיאות: ${processLog.errors.length}`);
-      console.log(
-        `לוג מפורט: https://www.hamichlol.org.il/index.php?title=${encodeURIComponent(
-          logTitle
-        )}`
-      );
+      console.log(`\x1b[32m========\x1b[0m`);
+    } else {
+      logger.warn(`שגיאה בשמירת הלוג:`, logResult.error);
+      // הדפסת הלוג לקונסול כגיבוי
+      console.log("\n=== לוג (גיבוי) ===");
+      console.log(logContent);
     }
+    await hamichlol.edit({
+      title: `u:${hamichlol.userName}/לוג עיבוד דפים לטיפול.json`,
+      text: processLog,
+      summary: `עדכון לוג עיבוד דפים לטיפול - ${processLog.total} דפים נבדקו`,
+      createonly: false,
+    });
+
   } catch (error) {
     logger.error("שגיאה בשמירת הלוג:", error);
     // הדפסת הלוג לקונסול כגיבוי
