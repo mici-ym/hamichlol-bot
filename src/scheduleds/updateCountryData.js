@@ -66,7 +66,7 @@ function createTemplatesQueryParams() {
 async function updateTemplates(hamichlol, templatesData) {
   for (const [, template] of Object.entries(templatesData)) {
     const title = template.title;
-    const content = template.revisions[0].slots.main.content["*"];
+    const content = template.revisions[0].slots.main.content;
 
     try {
       const { edit, error } = await hamichlol.edit({
@@ -160,7 +160,7 @@ async function updateCountryData(skipWatchlistCheck = false) {
     }
     // Get templates data and update
     const queryParams = createTemplatesQueryParams();
-    const templatesData = await wikipedia.query(queryParams);
+    const { value: templatesData } = await wikipedia.query({options: queryParams}).next();
     await updateTemplates(hamichlol, templatesData);
 
     logger.info("Country data update process completed.");
