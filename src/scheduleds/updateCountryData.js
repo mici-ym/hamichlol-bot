@@ -113,48 +113,51 @@ async function countCountriesToUpdate(hamichlol, countryTitles, watchlist) {
   return countriesToUpdate;
 }
 
-async function updateCountryData() {
+async function updateCountryData(skipWatchlistCheck = false) {
   const hamichlol = getRequestsInstance("hamichlol");
   const wikipedia = getRequestsInstance("wikipedia");
   wikipedia.withLogedIn = false;
 
   try {
-    // Validate environment variables
-    const { wlowner, wltoken } = validateEnvironmentVariables();
+    if (!skipWatchlistCheck) {
+      // Validate environment variables
+      const { wlowner, wltoken } = validateEnvironmentVariables();
 
-    // Get watchlist from Wikipedia
-    const watchListParams = createWatchListParams(wlowner, wltoken);
-    const { value: watchlist } = await wikipedia.query({ options: watchListParams }).next();
+      // Get watchlist from Wikipedia
+      const watchListParams = createWatchListParams(wlowner, wltoken);
+      const { value: watchlist } = await wikipedia
+        .query({ options: watchListParams })
+        .next();
 
-    // Filter country updates
-    const countryUpdates = filterCountryUpdates(watchlist);
+      // Filter country updates
+      const countryUpdates = filterCountryUpdates(watchlist);
 
-    if (countryUpdates.size === 0) {
-      logger.info("No country data updates found in the watchlist.");
-      return;
+      if (countryUpdates.size === 0) {
+        logger.info("No country data updates found in the watchlist.");
+        return;
+      }
+
+      if (countryUpdates.size < 3) {
+        logger.info("Fewer than 3 country data updates found.");
+        return;
+      }
+
+      logger.info("3 or more country data updates found, processing all.");
+
+      // Count countries that need updating
+      const countriesToUpdate = await countCountriesToUpdate(
+        hamichlol,
+        countryUpdates,
+        watchlist
+      );
+
+      if (countriesToUpdate === 0) {
+        logger.info("No countries to update.");
+        return;
+      }
+
+      logger.info(`${countriesToUpdate} countries to update.`);
     }
-
-    if (countryUpdates.size < 3) {
-      logger.info("Fewer than 3 country data updates found.");
-      return;
-    }
-
-    logger.info("3 or more country data updates found, processing all.");
-
-    // Count countries that need updating
-    const countriesToUpdate = await countCountriesToUpdate(
-      hamichlol,
-      countryUpdates,
-      watchlist
-    );
-
-    if (countriesToUpdate === 0) {
-      logger.info("No countries to update.");
-      return;
-    }
-
-    logger.info(`${countriesToUpdate} countries to update.`);
-
     // Get templates data and update
     const queryParams = createTemplatesQueryParams();
     const templatesData = await wikipedia.query(queryParams);
