@@ -172,7 +172,7 @@ async function updateCountryData(skipWatchlistCheck = false) {
 
 if (!process.env.AWS_EXECUTION_ENV) {
   // If not running in AWS Lambda, execute the function directly
-  updateCountryData();
+  updateCountryData(true);
 }
 
 export const handler = async (event, context) => {
