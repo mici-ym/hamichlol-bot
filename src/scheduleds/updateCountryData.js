@@ -124,7 +124,7 @@ async function updateCountryData() {
 
     // Get watchlist from Wikipedia
     const watchListParams = createWatchListParams(wlowner, wltoken);
-    const { value: watchlist } = await wikipedia.query(watchListParams).next();
+    const { value: watchlist } = await wikipedia.query({ options: watchListParams }).next();
 
     // Filter country updates
     const countryUpdates = filterCountryUpdates(watchlist);
@@ -134,12 +134,12 @@ async function updateCountryData() {
       return;
     }
 
-    if (countryUpdates.size < 10) {
-      logger.info("Fewer than 10 country data updates found.");
+    if (countryUpdates.size < 3) {
+      logger.info("Fewer than 3 country data updates found.");
       return;
     }
 
-    logger.info("10 or more country data updates found, processing all.");
+    logger.info("3 or more country data updates found, processing all.");
 
     // Count countries that need updating
     const countriesToUpdate = await countCountriesToUpdate(
