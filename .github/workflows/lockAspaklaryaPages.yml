@@ -34,11 +34,11 @@ jobs:
           echo $(date -u +'%Y-%m-%dT%H:%M:%S.000Z') > last_successful_run_lock_pages.txt
           echo "ARTIFACT_DAY=$(date -u +'%a')" >> $GITHUB_ENV
       - run: tree -I "node_modules"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: last_successful_run_lock_pages
           path: last_successful_run_lock_pages.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: logs_${{env.ARTIFACT_DAY}}_${{github.workflow}}
           path: ./logs
