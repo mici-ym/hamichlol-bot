@@ -10,7 +10,7 @@ jobs:
         MC_USER: ${{secrets.MC_USER}}
         MC_PASSWORD: ${{secrets.MC_PASSWORD}}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - run: npm install
       - run: node src/scripts/TemplateUpdate.js
       - run: echo "ARTIFACT_DAY=$(date -u +'%a')" >> $GITHUB_ENV
