@@ -1,3 +1,6 @@
+import WikiClient from "./Client.js";
+import { mapIdsToNames, mergeResults } from "./utils/DataProcessor.js";
+import logger from "../logger.js";
 
 /**
  * @typedef {Object} RequestsOptions
@@ -7,10 +10,6 @@
  * @property {boolean} [withLogedIn=true] - Whether to login automatically before requests
  * @property {string} [userAgent="hamichlol-bot"] - User agent string for requests
  */
-
-import WikiClient from "./Client.js";
-import { mapIdsToNames, mergeResults } from "./utils/DataProcessor.js";
-import logger from "../logger.js";
 
 /**
  * Represents a class for making HTTP GET requests to a specified URL and retrieving data from a wiki.
