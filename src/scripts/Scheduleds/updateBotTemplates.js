@@ -5,7 +5,7 @@ const wikipediaClient = new Requests({
   userAgent: "Bot Template Updater/1.0 (https://example.com/bot)",
 });
 const hamiclolClient = new Requests({
-  wikiUrl: "https://www.hamichlol.org.il/api.php",
+  wikiUrl: "https://www.hamichlol.org.il/w/api.php",
   userAgent: "Bot Template Updater/1.0 (https://example.com/bot)",
 });
 
@@ -32,11 +32,15 @@ const hamiclolClient = new Requests({
  * const lastUpdate = await getLastUpdateTime(client, 'תבנית:MyTemplate');
  * console.log(lastUpdate); // "2026-05-11T10:30:45Z"
  */
-async function getLastUpdateTime(client, pageTitle) {
+async function getLastUpdateTime(client) {
+  const titles = ["תבנית:בוט יישובים/0026"];
   try {
     const queryResult = await client.queryPages({
-      titles: pageTitle,
-      rvprop: "timestamp",
+      titles,
+      options: {
+        prop: "revisions",
+        rvprop: "timestamp",
+      },
     });
 
     if (!queryResult || Object.keys(queryResult).length === 0) {
@@ -50,10 +54,7 @@ async function getLastUpdateTime(client, pageTitle) {
 
     return null;
   } catch (error) {
-    console.error(
-      `Error getting last update time for "${pageTitle}":`,
-      error.message,
-    );
+    console.error(`Error getting last update time for titles:`, error.message);
     throw error;
   }
 }
@@ -117,12 +118,7 @@ async function getPageContent(pageTitle) {
  * );
  * console.log(result); // { pageid: 123, title: 'תבנית:MyTemplate', contentmodel: 'wikitext', ... }
  */
-async function updatePage(
-  pageTitle,
-  newContent,
-  editSummary,
-  options = {},
-) {
+async function updatePage(pageTitle, newContent, editSummary, options = {}) {
   try {
     const { minor = false, bot = true } = options;
 
@@ -142,6 +138,7 @@ async function updatePage(
 }
 
 async function hendler() {
-  const wikiLastUpdate = await getLastUpdateTime(wikipediaClient, "תבנית:דף_נושא");
-  const hamiclolLastUpdate = await getLastUpdateTime(hamiclolClient, "תבנית:דף_נושא");
+  const hamiclolLastUpdate = await getLastUpdateTime(hamiclolClient);
+  const wikiLastUpdate = await getLastUpdateTime(wikipediaClient);
 }
+hendler();
