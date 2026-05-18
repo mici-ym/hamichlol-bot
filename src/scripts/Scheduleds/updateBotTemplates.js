@@ -1,7 +1,7 @@
 import { Requests } from "../../requests/requests.js";
 
 const wikipediaClient = new Requests({
-  wikiUrl: "https://he.wikipedia.org/w/api.php",
+  wikiUrl: "https://import.hamichlol.org.il/",
   userAgent: "Bot Template Updater/1.0 (https://example.com/bot)",
 });
 const hamiclolClient = new Requests({
@@ -14,10 +14,10 @@ const TITLES = [
   "תבנית:בוט מדינות/0026",
 ];
 
-async function getLastUpdateTimes(client, titles) {
+async function getLastUpdateTimes(client) {
   try {
     const queryResult = await client.queryPages({
-      titles,
+      titles: TITLES,
       useIdsOrTitles: "titles",
       options: {
         prop: "revisions",
@@ -69,8 +69,8 @@ async function getPagesContent(client, category) {
     }
 
     return Object.fromEntries(
-      Object.entries(queryResult).map(([title, page]) => [
-        title,
+      Object.entries(generatorResult).map(([, page]) => [
+        page.title,
         page?.revisions?.[0]?.slots?.main?.content ?? null,
       ])
     );
@@ -99,8 +99,8 @@ async function updatePage(pageTitle, newContent, editSummary, options = {}) {
 }
 
 async function hendler() {
-  const hamiclolLastUpdate = await getLastUpdateTime(hamiclolClient);
-  const wikiLastUpdate = await getLastUpdateTime(wikipediaClient);
+  const hamiclolLastUpdate = await getLastUpdateTimes(hamiclolClient);
+  const wikiLastUpdate = await getLastUpdateTimes(wikipediaClient);
   const listOfUpdate = new Set();
 
   for (const key in Object.keys(hamiclolLastUpdate)) {
@@ -116,18 +116,25 @@ async function hendler() {
     return;
   }
 
-  const contentByTitle = await getPagesContent(wikipediaClient, titlesToUpdate);
+  listOfUpdate.forEach(async (category) => {
+    console.log(`Updating category: ${category}`);
+    const contentForWikipedia = await getPagesContent(wikipediaClient, categoryOfUpdate);
+    const contentForHamichlol = await getPagesContent(hamiclolClient, categoryOfUpdate);
 
-  for (const title of titlesToUpdate) {
-    const newContent = contentByTitle[title];
-    if (!newContent) {
-      console.warn(`No content found for ${title}, skipping update.`);
-      continue;
+    for (const [title, newContent] of Object.entries(contentForWikipedia)) {
+      if (!newContent) {
+        console.warn(`No content found for ${title}, skipping update.`);
+        continue;
+      }
+      if (contentForHamichlol[title] === newContent) {
+        console.log(`Content for ${title} is already up to date, skipping.`);
+        continue;
+      }
+      const editSummary = `עדכון מוויקיפדיה לפי תאריך ${wikiTimes[title]}`;
+      await updatePage(title, newContent, editSummary, { minor: false, bot: true });
+      console.log(`Updated ${title} from Wikipedia.`);
     }
-    const editSummary = `עדכון מוויקיפדיה לפי תאריך ${wikiTimes[title]}`;
-    await updatePage(title, newContent, editSummary, { minor: false, bot: true });
-    console.log(`Updated ${title} from Wikipedia.`);
-  }
+  });
 }
 
-handler();
+hendler();
