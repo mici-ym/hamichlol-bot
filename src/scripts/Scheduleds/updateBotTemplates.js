@@ -3,6 +3,7 @@ import { Requests } from "../../requests/requests.js";
 const wikipediaClient = new Requests({
   wikiUrl: "https://import.hamichlol.org.il/",
   userAgent: "Bot Template Updater/1.0 (https://example.com/bot)",
+  withLogedIn: false,
 });
 const hamiclolClient = new Requests({
   wikiUrl: "https://www.hamichlol.org.il/w/api.php",
@@ -11,7 +12,7 @@ const hamiclolClient = new Requests({
 
 const TITLES = [
   "תבנית:בוט יישובים/0026",
-  "תבנית:בוט מדינות/0026",
+  "תבנית:נתוני מדינות/ישראל",
 ];
 
 async function getLastUpdateTimes(client) {
@@ -19,6 +20,7 @@ async function getLastUpdateTimes(client) {
     const queryResult = await client.queryPages({
       titles: TITLES,
       useIdsOrTitles: "titles",
+      method: "GET",
       options: {
         prop: "revisions",
         rvprop: "timestamp",
@@ -32,7 +34,7 @@ async function getLastUpdateTimes(client) {
     return Object.fromEntries(
       Object.entries(queryResult).map(([title, page]) => [
         title,
-        page?.revisions?.[0]?.timestamp ?? null,
+        Date.parse(page?.revisions?.[0]?.timestamp) ?? null,
       ])
     );
   } catch (error) {
@@ -58,15 +60,19 @@ async function getPagesContent(client, category) {
       options: {
         generator: "categorymembers",
         gcmtitle: `קטגוריה:${category}`,
+        gcmnamespace: 10, // Namespace for templates
         prop: "revisions",
         rvprop: "content",
         rvslots: "main",
+        gcmlimit: "max",
       },
     });
 
     if (!generatorResult || Object.keys(generatorResult).length === 0) {
       return null;
     }
+    console.log(Object.values(generatorResult));
+
 
     return Object.fromEntries(
       Object.entries(generatorResult).map(([, page]) => [
@@ -102,10 +108,19 @@ async function hendler() {
   const hamiclolLastUpdate = await getLastUpdateTimes(hamiclolClient);
   const wikiLastUpdate = await getLastUpdateTimes(wikipediaClient);
   const listOfUpdate = new Set();
+  const categoresOfUpdate = {
+    "יישובים": "תבניות בוט היישובים",
+    "מדינות": "תבניות נתוני מדינות",
+  };
+  console.log(hamiclolLastUpdate);
+  console.log(wikiLastUpdate);
 
-  for (const key in Object.keys(hamiclolLastUpdate)) {
+
+
+  for (const key of Object.keys(hamiclolLastUpdate)) {
+    console.info(`Comparing update times for ${key}: Hamichlol - ${hamiclolLastUpdate[key]}, Wikipedia - ${wikiLastUpdate[key]}`);
     if (hamiclolLastUpdate[key] > wikiLastUpdate[key]) {
-      hamiclolLastUpdate[key].includes("בוט יישובים")
+      key.includes("בוט יישובים")
         ? listOfUpdate.add("יישובים")
         : listOfUpdate.add("מדינות");
     }
@@ -118,8 +133,8 @@ async function hendler() {
 
   listOfUpdate.forEach(async (category) => {
     console.log(`Updating category: ${category}`);
-    const contentForWikipedia = await getPagesContent(wikipediaClient, categoryOfUpdate);
-    const contentForHamichlol = await getPagesContent(hamiclolClient, categoryOfUpdate);
+    const contentForWikipedia = await getPagesContent(wikipediaClient, categoresOfUpdate[category]);
+    const contentForHamichlol = await getPagesContent(hamiclolClient, categoresOfUpdate[category]);
 
     for (const [title, newContent] of Object.entries(contentForWikipedia)) {
       if (!newContent) {
