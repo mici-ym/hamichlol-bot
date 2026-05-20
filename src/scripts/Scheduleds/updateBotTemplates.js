@@ -1,7 +1,7 @@
 import { Requests } from "../../requests/requests.js";
 
 const wikipediaClient = new Requests({
-  wikiUrl: "https://www.hamichlol.org.il/import/get_wik1i.php",
+  wikiUrl: "https://he.wikipedia.org/w/api.php",
   userAgent: "Bot Template Updater/1.0 (https://example.com/bot)",
   withLogedIn: false,
 });
@@ -71,13 +71,11 @@ async function getPagesContent(client, category) {
     if (!generatorResult || Object.keys(generatorResult).length === 0) {
       return null;
     }
-    console.log(Object.values(generatorResult));
-
 
     return Object.fromEntries(
       Object.entries(generatorResult).map(([, page]) => [
         page.title,
-        page?.revisions?.[0]?.slots?.main?.content ?? null,
+        page?.revisions?.[0]?.slots?.main?.["*"] ?? null,
       ])
     );
   } catch (error) {
@@ -112,10 +110,6 @@ async function hendler() {
     "יישובים": "תבניות בוט היישובים",
     "מדינות": "תבניות נתוני מדינות",
   };
-  console.log(hamiclolLastUpdate);
-  console.log(wikiLastUpdate);
-
-
 
   for (const key of Object.keys(hamiclolLastUpdate)) {
     console.info(`Comparing update times for ${key}: Hamichlol - ${hamiclolLastUpdate[key]}, Wikipedia - ${wikiLastUpdate[key]}`);
