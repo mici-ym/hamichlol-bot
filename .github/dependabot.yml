@@ -11,15 +11,27 @@ updates:
     commit-message:
       prefix: "[dependabot]"
     assignees:
-      - mici-ym
+      - michi-tz
     reviewers:
-      - mici-ym
+      - michi-tz
     open-pull-requests-limit: 10 
     groups:
       typescript-eslint:
         applies-to: version-updates
         patterns:
           - "*typescript-eslint*"
+  - package-ecosystem: "pnpm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    target-branch: develop
+    commit-message:
+      prefix: "[dependabot]"
+    assignees:
+      - michi-tz
+    reviewers:
+      - michi-tz
+    open-pull-requests-limit: 10
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
