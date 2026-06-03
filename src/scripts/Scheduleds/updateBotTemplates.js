@@ -61,7 +61,7 @@ async function getPagesContent(client, category) {
       options: {
         "prop": "revisions",
         "generator": "categorymembers",
-        "rvprop": "content",
+        "rvprop": "content|ids",
         "rvslots": "main",
         "gcmtitle": `קטגוריה:${category}`,
         "gcmlimit": "max",
@@ -76,6 +76,7 @@ async function getPagesContent(client, category) {
       Object.entries(generatorResult).map(([, page]) => [
         page.title,
         page?.revisions?.[0]?.slots?.main?.["*"] ?? null,
+        page?.revisions?.[0]?.revid ?? null,
       ])
     );
   } catch (error) {
@@ -130,7 +131,7 @@ async function hendler() {
     const contentForWikipedia = await getPagesContent(wikipediaClient, categoresOfUpdate[category]);
     const contentForHamichlol = await getPagesContent(hamiclolClient, categoresOfUpdate[category]);
 
-    for (const [title, newContent] of Object.entries(contentForWikipedia)) {
+    for (const [title, newContent, revisionId] of Object.entries(contentForWikipedia)) {
       if (!newContent) {
         console.warn(`No content found for ${title}, skipping update.`);
         continue;
@@ -139,8 +140,8 @@ async function hendler() {
         console.log(`Content for ${title} is already up to date, skipping.`);
         continue;
       }
-      const editSummary = `עדכון מוויקיפדיה לפי תאריך ${wikiTimes[title]}`;
-      await updatePage(title, newContent, editSummary, { minor: false, bot: true });
+      const editSummary = `עדכון מוויקיפדיה גרסה ${revisionId}`;
+      await updatePage(title, newContent, editSummary, { minor: false, bot: true, tags: "auto-update" });
       console.log(`Updated ${title} from Wikipedia.`);
     }
   });
