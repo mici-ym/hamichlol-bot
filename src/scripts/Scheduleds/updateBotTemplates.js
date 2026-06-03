@@ -140,7 +140,7 @@ async function hendler() {
         console.log(`Content for ${title} is already up to date, skipping.`);
         continue;
       }
-      const editSummary = `עדכון מוויקיפדיה גרסה ${revisionId}`;
+      const editSummary = revisionId ? `עדכון מוויקיפדיה גרסה ${revisionId}` : `עדכון מוויקיפדיה`;
       await updatePage(title, newContent, editSummary, { minor: false, bot: true, tags: "auto-update" });
       console.log(`Updated ${title} from Wikipedia.`);
     }
