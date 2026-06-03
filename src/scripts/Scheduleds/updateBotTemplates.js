@@ -94,8 +94,7 @@ async function updatePage(pageTitle, newContent, editSummary, options = {}) {
       title: pageTitle,
       text: newContent,
       summary: editSummary,
-      minor,
-      bot,
+      ...options,
     });
   } catch (error) {
     console.error(`Error updating "${pageTitle}":`, error.message);
