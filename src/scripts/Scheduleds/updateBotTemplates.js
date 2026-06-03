@@ -43,6 +43,27 @@ async function getLastUpdateTimes(client) {
   }
 }
 
+/** */
+async function updateCategoryTemplates(category) {
+  const contentForWikipedia = await getPagesContent(wikipediaClient, categoresOfUpdate[category]);
+  const contentForHamichlol = await getPagesContent(hamiclolClient, categoresOfUpdate[category]);
+
+  for (const [title, newContent, revisionId] of Object.entries(contentForWikipedia)) {
+    if (!newContent) {
+      console.warn(`No content found for ${title}, skipping update.`);
+      continue;
+    }
+    if (contentForHamichlol[title] === newContent) {
+      console.log(`Content for ${title} is already up to date, skipping.`);
+      continue;
+    }
+    const editSummary = revisionId ? `עדכון מוויקיפדיה גרסה ${revisionId}` : `עדכון מוויקיפדיה`;
+    await updatePage(title, newContent, editSummary, { minor: false, bot: true, tags: "auto-update" });
+    console.log(`Updated ${title} from Wikipedia.`);
+  }
+}
+
+
 /**
  * Get the full content of a page
  *
@@ -102,48 +123,38 @@ async function updatePage(pageTitle, newContent, editSummary, options = {}) {
   }
 }
 
-async function hendler() {
-  const hamiclolLastUpdate = await getLastUpdateTimes(hamiclolClient);
-  const wikiLastUpdate = await getLastUpdateTimes(wikipediaClient);
-  const listOfUpdate = new Set();
-  const categoresOfUpdate = {
-    "יישובים": "תבניות בוט היישובים",
-    "מדינות": "תבניות נתוני מדינות",
-  };
+async function hendler(cat) {
+  if (!cat) {
+    const hamiclolLastUpdate = await getLastUpdateTimes(hamiclolClient);
+    const wikiLastUpdate = await getLastUpdateTimes(wikipediaClient);
+    const listOfUpdate = new Set();
+    const categoresOfUpdate = {
+      "יישובים": "תבניות בוט היישובים",
+      "מדינות": "תבניות נתוני מדינות",
+    };
 
-  for (const key of Object.keys(hamiclolLastUpdate)) {
-    console.info(`Comparing update times for ${key}: Hamichlol - ${hamiclolLastUpdate[key]}, Wikipedia - ${wikiLastUpdate[key]}`);
-    if (hamiclolLastUpdate[key] < wikiLastUpdate[key]) {
-      key.includes("בוט יישובים")
-        ? listOfUpdate.add("יישובים")
-        : listOfUpdate.add("מדינות");
-    }
-    if (listOfUpdate.size === 2) break;
-  }
-  if (listOfUpdate.size === 0) {
-    console.log("No updates needed. Both templates are up to date.");
-    return;
-  }
-
-  listOfUpdate.forEach(async (category) => {
-    console.log(`Updating category: ${category}`);
-    const contentForWikipedia = await getPagesContent(wikipediaClient, categoresOfUpdate[category]);
-    const contentForHamichlol = await getPagesContent(hamiclolClient, categoresOfUpdate[category]);
-
-    for (const [title, newContent, revisionId] of Object.entries(contentForWikipedia)) {
-      if (!newContent) {
-        console.warn(`No content found for ${title}, skipping update.`);
-        continue;
+    for (const key of Object.keys(hamiclolLastUpdate)) {
+      console.info(`Comparing update times for ${key}: Hamichlol - ${hamiclolLastUpdate[key]}, Wikipedia - ${wikiLastUpdate[key]}`);
+      if (hamiclolLastUpdate[key] < wikiLastUpdate[key]) {
+        key.includes("בוט יישובים")
+          ? listOfUpdate.add("יישובים")
+          : listOfUpdate.add("מדינות");
       }
-      if (contentForHamichlol[title] === newContent) {
-        console.log(`Content for ${title} is already up to date, skipping.`);
-        continue;
-      }
-      const editSummary = revisionId ? `עדכון מוויקיפדיה גרסה ${revisionId}` : `עדכון מוויקיפדיה`;
-      await updatePage(title, newContent, editSummary, { minor: false, bot: true, tags: "auto-update" });
-      console.log(`Updated ${title} from Wikipedia.`);
+      if (listOfUpdate.size === 2) break;
     }
-  });
+    if (listOfUpdate.size === 0) {
+      console.log("No updates needed. Both templates are up to date.");
+      return;
+    }
+
+    listOfUpdate.forEach(async (category) => {
+      console.log(`Updating category: ${category}`);
+      await updateCategoryTemplates(category);
+    });
+  } else {
+    console.log(`Updating category: ${cat}`);
+    await updateCategoryTemplates(cat);
+  }
 }
 
 hendler();
